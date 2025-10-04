@@ -11,7 +11,8 @@ The pipeline is a chain of event-driven Cloud Functions, orchestrated by Pub/Sub
 
 *   **Module 1: Data Ingestion (The Hunter)** - Finds and filters relevant articles.
 *   **Module 2: Core Analysis (The Brain)** - Analyzes the articles and extracts insights.
-*   **Modules 3 & 4 (Coming Soon):** Verification and Quality Control.
+*   **Module 3: External Verification (The Shield)** - Fact-checks the extracted data against external sources.
+*   **Module 4: Internal QC (The Editor)** - Performs a final, automated quality control check on the AI's analysis.
 
 ![Architecture Diagram](https://storage.googleapis.com/khortytsia-assets/architecture.png)  
 *Note: This is a placeholder image. You would need to create and upload your own architecture diagram to a GCS bucket.*
@@ -21,32 +22,19 @@ The pipeline is a chain of event-driven Cloud Functions, orchestrated by Pub/Sub
 ```
 khortytsia/
 ├── core_analysis/            # Module 2: Core Analysis
-│   ├── index.js
-│   ├── package.json
-│   ├── prompt.txt
-│   └── test/
-│       └── test.js
+│   ├── ...
+├── external_verification/    # Module 3: External Verification
+│   ├── ...
 ├── fetch_source_data/        # Module 1: Fetch Source Data
-│   ├── index.js
-│   ├── package.json
-│   └── test/
-│       └── test.js
+│   ├── ...
 ├── filter_article_content/   # Module 1: Filter Article Content
-│   ├── index.js
-│   ├── keywords.json
-│   ├── package.json
-│   └── test/
-│       └── test.js
+│   ├── ...
+├── internal_qc/              # Module 4: Internal QC
+│   ├── ...
 ├── pipeline/                 # Infrastructure as Code
-│   ├── main.tf
-│   ├── outputs.tf
-│   ├── terraform.tfvars
-│   └── variables.tf
+│   ├── ...
 ├── trigger_ingestion_cycle/  # Module 1: Trigger Ingestion Cycle
-│   ├── index.js
-│   ├── package.json
-│   └── test/
-│       └── test.js
+│   ├── ...
 ├── .gitignore
 ├── LICENSE
 └── README.md
@@ -67,6 +55,18 @@ khortytsia/
 | Function | Trigger | Description |
 | :--- | :--- | :--- |
 | `core_analysis` | Pub/Sub | Uses Gemini to analyze the article content and extract insights. |
+
+### Module 3: External Verification
+
+| Function | Trigger | Description |
+| :--- | :--- | :--- |
+| `external_verification` | Pub/Sub | Fact-checks the extracted data against external sources. |
+
+### Module 4: Internal QC
+
+| Function | Trigger | Description |
+| :--- | :--- | :--- |
+| `internal_qc` | Pub/Sub | Performs a final, automated quality control check on the AI's analysis. |
 
 ## 🚀 Getting Started
 
@@ -104,6 +104,5 @@ khortytsia/
 
 ## 🔮 What's Next
 
-*   **Module 3: External Verification** - Cross-reference the AI-generated data with external sources.
-*   **Module 4: Internal QC** - Perform internal quality control checks on the data.
+*   **Module 5: Decision Engine** - Makes a final judgment on the analysis.
 *   **CI/CD Pipeline** - Automate the testing and deployment process with GitHub Actions.

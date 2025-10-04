@@ -63,6 +63,10 @@ resource "google_pubsub_topic" "internal_qc" {
   name = "internal-qc"
 }
 
+resource "google_pubsub_topic" "decision_engine_queue" {
+  name = "decision-engine-queue"
+}
+
 resource "google_cloudfunctions_function" "trigger_ingestion_cycle" {
   name        = "trigger_ingestion_cycle"
   runtime     = "nodejs16"
@@ -131,6 +135,30 @@ resource "google_cloudfunctions_function" "core_analysis" {
   }
 }
 
+resource "google_cloudfunctions_function" "external_verification" {
+  name        = "external_verification"
+  runtime     = "nodejs16"
+  entry_point = "externalVerification"
+  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_object = "external_verification.zip"
+  event_trigger {
+    event_type = "google.pubsub.topic.publish"
+    resource   = google_pubsub_topic.external_verification.name
+  }
+}
+
+resource "google_cloudfunctions_function" "internal_qc" {
+  name        = "internal_qc"
+  runtime     = "nodejs16"
+  entry_point = "internalQc"
+  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_object = "internal_qc.zip"
+  event_trigger {
+    event_type = "google.pubsub.topic.publish"
+    resource   = google_pubsub_topic.internal_qc.name
+  }
+}
+
 # IAM for trigger_ingestion_cycle to publish to source-to-fetch
 resource "google_project_iam_member" "trigger_ingestion_cycle_pubsub" {
   project = var.project_id
@@ -164,4 +192,18 @@ resource "google_project_iam_member" "core_analysis_vertexai" {
   project = var.project_id
   role    = "roles/aiplatform.user"
   member  = "serviceAccount:${google_cloudfunctions_function.core_analysis.service_account_email}"
+}
+
+# IAM for external_verification to publish to decision-engine-queue
+resource "google_project_iam_member" "external_verification_pubsub" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_cloudfunctions_function.external_verification.service_account_email}"
+}
+
+# IAM for internal_qc to publish to decision-engine-queue
+resource "google_project_iam_member" "internal_qc_pubsub" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_cloudfunctions_function.internal_qc.service_account_email}"
 }
