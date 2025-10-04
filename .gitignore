@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Terraform files
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Log files
+*.log
+
+# OS-specific files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,17 @@
+{
+  "name": "trigger-ingestion-cycle",
+  "version": "1.0.0",
+  "description": "Triggers the data ingestion cycle",
+  "main": "index.js",
+  "dependencies": {
+    "@google-cloud/pubsub": "^5.2.0"
+  },
+  "devDependencies": {
+    "chai": "^4.3.4",
+    "mocha": "^11.7.4",
+    "sinon": "^12.0.1"
+  },
+  "scripts": {
+    "test": "mocha"
+  }
+}
