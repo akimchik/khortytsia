@@ -6,6 +6,11 @@ terraform {
       version = "~> 4.0"
     }
   }
+
+  backend "gcs" {
+    bucket  = "khortytsia-terraform-state"
+    prefix  = "terraform/state"
+  }
 }
 
 provider "google" {
@@ -17,6 +22,12 @@ resource "random_string" "bucket_prefix" {
   length  = 8
   special = false
   upper   = false
+}
+
+resource "google_storage_bucket" "terraform_state" {
+  name          = "khortytsia-terraform-state"
+  location      = var.region
+  force_destroy = true
 }
 
 resource "google_storage_bucket" "source_bucket" {
