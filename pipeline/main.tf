@@ -72,6 +72,18 @@ resource "google_cloudfunctions_function_iam_member" "trigger_ingestion_cycle_in
   member         = "allUsers"
 }
 
+resource "google_cloud_scheduler_job" "trigger_ingestion_cycle_scheduler" {
+  name        = "trigger-ingestion-cycle-scheduler"
+  description = "Triggers the ingestion cycle every 30 minutes"
+  schedule    = var.schedule
+  time_zone   = "Etc/UTC"
+
+  http_target {
+    http_method = "GET"
+    uri         = google_cloudfunctions_function.trigger_ingestion_cycle.https_trigger_url
+  }
+}
+
 resource "google_cloudfunctions_function" "fetch_source_data" {
   name        = "fetch_source_data"
   runtime     = "nodejs16"

@@ -8,3 +8,9 @@ variable "region" {
   type        = string
   default     = "us-central1"
 }
+
+variable "schedule" {
+  description = "The cron schedule for the trigger_ingestion_cycle function."
+  type        = string
+  default     = "*/30 * * * *"
+}
