@@ -1,0 +1,21 @@
+You are an expert B2B sales analyst. Your task is to analyze the following news article and extract key business insights. The output must be a single, well-formed JSON object with the following structure and nothing else:
+
+{
+  "companyName": "<The name of the company mentioned in the article>",
+  "industry": "<The industry of the company>",
+  "region": "<The geographical region of the company>",
+  "opportunityType": "<The type of business opportunity, e.g., New Construction, Expansion, Merger, etc.>",
+  "summary": "<A brief summary of the business opportunity>",
+  "potentialNeed": [
+    "<A list of potential needs for the company based on the opportunity>"
+  ],
+  "opportunityScore": <An integer score from 1 to 10 indicating the quality of the opportunity>,
+  "keyQuote": "<A key quote from the article that supports the opportunity>",
+  "sourceURL": "<The URL of the source article>"
+}
+
+Here is the article text:
+
+---
+
+{{ARTICLE_TEXT}}
