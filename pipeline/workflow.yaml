@@ -1,0 +1,50 @@
+main:
+  params: [event]
+  steps:
+    - init:
+        assign:
+          - project_id: ${sys.get_env("GCLOUD_PROJECT")}
+          - region: "us-central1"
+          - external_verification_url: "https://us-central1-${project_id}.cloudfunctions.net/external_verification"
+          - internal_qc_url: "https://us-central1-${project_id}.cloudfunctions.net/internal_qc"
+          - decision_engine_url: "https://us-central1-${project_id}.cloudfunctions.net/decision_engine"
+          - article: ${json.decode(base64.decode(event.data.message.data))}
+    - parallel_verification:
+        parallel:
+          - external_verification_step:
+              call: http.post
+              args:
+                url: ${external_verification_url}
+                body: ${article}
+              result: external_verification_result
+          - internal_qc_step:
+              call: http.post
+              args:
+                url: ${internal_qc_url}
+                body: ${article}
+              result: internal_qc_result
+    - combine_results:
+        assign:
+          - combined_results: ${
+              json.encode({
+                "companyName": article.companyName,
+                "industry": article.industry,
+                "region": article.region,
+                "opportunityType": article.opportunityType,
+                "summary": article.summary,
+                "potentialNeed": article.potentialNeed,
+                "opportunityScore": article.opportunityScore,
+                "keyQuote": article.keyQuote,
+                "sourceURL": article.sourceURL,
+                "verification": external_verification_result.body,
+                "internal_qc": internal_qc_result.body
+              })
+            }
+    - trigger_decision_engine:
+        call: http.post
+        args:
+          url: ${decision_engine_url}
+          body: ${json.decode(combined_results)}
+        result: decision_engine_result
+    - return_result:
+        return: ${decision_engine_result.body}

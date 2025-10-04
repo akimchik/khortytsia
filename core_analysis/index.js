@@ -38,6 +38,9 @@ const analysisSchema = Joi.object({
   sourceURL: Joi.string().uri().required(),
 });
 
+const { WorkflowsClient } = require('@google-cloud/workflows');
+const workflowsClient = new WorkflowsClient();
+
 /**
  * Pub/Sub-triggered Cloud Function that analyzes article content.
  *
@@ -56,7 +59,7 @@ exports.coreAnalysis = async (message, context) => {
     const promptTemplate = await getPromptTemplate();
     const finalPrompt = promptTemplate.replace('{{ARTICLE_TEXT}}', article.clean_text);
 
-    const generativeModel = exports.vertexai.preview.getGenerativeModel({
+    const generativeModel = vertexai.preview.getGenerativeModel({
       model: 'gemini-2.5-pro',
     });
 
@@ -71,19 +74,16 @@ exports.coreAnalysis = async (message, context) => {
       return;
     }
 
-    const analysisMessage = { json: analysis };
+    const execution = await workflowsClient.createExecution({
+      parent: workflowsClient.workflowPath(process.env.GCLOUD_PROJECT, 'us-central1', 'khortytsia-workflow'),
+      execution: {
+        argument: JSON.stringify({ data: { message: { data: Buffer.from(JSON.stringify(analysis)).toString('base64') } } })
+      }
+    });
 
-    await Promise.all([
-      exports.pubsub.topic(externalVerificationTopic).publishMessage(analysisMessage),
-      exports.pubsub.topic(internalQcTopic).publishMessage(analysisMessage),
-    ]);
-
-    console.log(`Published analysis for ${analysis.companyName} to verification topics.`);
+    console.log(`Triggered workflow for ${analysis.companyName}. Execution: ${execution[0].name}`);
 
   } catch (error) {
     console.error(`Error in coreAnalysis: ${error.message}`);
   }
 };
-
-exports.pubsub = pubsub;
-exports.vertexai = vertexai;

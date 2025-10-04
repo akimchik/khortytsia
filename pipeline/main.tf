@@ -78,6 +78,10 @@ resource "google_pubsub_topic" "decision_engine_queue" {
   name = "decision-engine-queue"
 }
 
+resource "google_pubsub_topic" "final_analysis" {
+  name = "final-analysis"
+}
+
 resource "google_cloudfunctions_function" "trigger_ingestion_cycle" {
   name        = "trigger_ingestion_cycle"
   runtime     = "nodejs16"
@@ -170,6 +174,21 @@ resource "google_cloudfunctions_function" "internal_qc" {
   }
 }
 
+resource "google_cloudfunctions_function" "decision_engine" {
+  name        = "decision_engine"
+  runtime     = "nodejs16"
+  entry_point = "decisionEngine"
+  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_object = "decision_engine.zip"
+  trigger_http = true
+}
+
+resource "google_workflows_workflow" "khortytsia_workflow" {
+  name            = "khortytsia-workflow"
+  region          = var.region
+  source_contents = file("../workflow.yaml")
+}
+
 # IAM for trigger_ingestion_cycle to publish to source-to-fetch
 resource "google_project_iam_member" "trigger_ingestion_cycle_pubsub" {
   project = var.project_id
@@ -191,10 +210,10 @@ resource "google_project_iam_member" "filter_article_content_pubsub" {
   member  = "serviceAccount:${google_cloudfunctions_function.filter_article_content.service_account_email}"
 }
 
-# IAM for core_analysis to publish to external-verification and internal-qc
-resource "google_project_iam_member" "core_analysis_pubsub_external" {
+# IAM for core_analysis to invoke the workflow
+resource "google_project_iam_member" "core_analysis_workflow_invoker" {
   project = var.project_id
-  role    = "roles/pubsub.publisher"
+  role    = "roles/workflows.invoker"
   member  = "serviceAccount:${google_cloudfunctions_function.core_analysis.service_account_email}"
 }
 
@@ -217,4 +236,11 @@ resource "google_project_iam_member" "internal_qc_pubsub" {
   project = var.project_id
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:${google_cloudfunctions_function.internal_qc.service_account_email}"
+}
+
+# IAM for decision_engine to publish to final_analysis
+resource "google_project_iam_member" "decision_engine_pubsub" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"
 }

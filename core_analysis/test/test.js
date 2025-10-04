@@ -1,25 +1,21 @@
 const { expect } = require('chai');
 const sinon = require('sinon');
-
-// Import the module to be tested
-const functionToTest = require('../index');
+const proxyquire = require('proxyquire');
 
 describe('coreAnalysis', () => {
-  let topicMock;
-  let publishMessageMock;
+  let functionToTest;
+  let createExecutionStub;
   let generateContentStub;
 
   beforeEach(() => {
-    // Mock the Pub/Sub client
-    publishMessageMock = sinon.stub().resolves();
-    topicMock = {
-      publishMessage: publishMessageMock,
-    };
-    functionToTest.pubsub = {
-      topic: sinon.stub().returns(topicMock),
+    // Create stubs for the Workflows client and its methods
+    createExecutionStub = sinon.stub().resolves([{ name: 'test-execution' }]);
+    const workflowsStub = {
+      createExecution: createExecutionStub,
+      workflowPath: sinon.stub(),
     };
 
-    // Mock the Vertex AI client
+    // Create stubs for the Vertex AI client and its methods
     generateContentStub = sinon.stub().resolves({
       response: {
         candidates: [
@@ -49,19 +45,24 @@ describe('coreAnalysis', () => {
         ],
       },
     });
-
-    functionToTest.vertexai = {
+    const vertexaiStub = {
       preview: {
         getGenerativeModel: sinon.stub().returns({ generateContent: generateContentStub }),
       },
     };
+
+    // Use proxyquire to inject our mocked clients into the function
+    functionToTest = proxyquire('../index', {
+      '@google-cloud/workflows': { WorkflowsClient: sinon.stub().returns(workflowsStub) },
+      '@google-cloud/vertexai': { VertexAI: sinon.stub().returns(vertexaiStub) },
+    });
   });
 
   afterEach(() => {
     sinon.restore();
   });
 
-  it('should process a valid article and publish the analysis', async () => {
+  it('should process a valid article and trigger the workflow', async () => {
     const message = {
       data: Buffer.from(
         JSON.stringify({
@@ -74,10 +75,8 @@ describe('coreAnalysis', () => {
 
     await functionToTest.coreAnalysis(message, {});
 
-    // Check that messages were published to both topics
-    expect(publishMessageMock.callCount).to.equal(2);
-    expect(functionToTest.pubsub.topic.calledWith('external-verification')).to.be.true;
-    expect(functionToTest.pubsub.topic.calledWith('internal-qc')).to.be.true;
+    // Check that the workflow was triggered
+    expect(createExecutionStub.calledOnce).to.be.true;
   });
 
   it('should handle an invalid article format', async () => {
@@ -85,10 +84,12 @@ describe('coreAnalysis', () => {
       data: Buffer.from(JSON.stringify({ invalid: 'format' })).toString('base64'),
     };
 
+    const consoleErrorStub = sinon.stub(console, 'error');
     await functionToTest.coreAnalysis(message, {});
+    consoleErrorStub.restore();
 
-    // Check that no messages were published
-    expect(publishMessageMock.callCount).to.equal(0);
+    // Check that the workflow was not triggered
+    expect(createExecutionStub.callCount).to.equal(0);
   });
 
   it('should handle an invalid analysis format from the AI', async () => {
@@ -119,9 +120,11 @@ describe('coreAnalysis', () => {
       ).toString('base64'),
     };
 
+    const consoleErrorStub = sinon.stub(console, 'error');
     await functionToTest.coreAnalysis(message, {});
+    consoleErrorStub.restore();
 
-    // Check that no messages were published
-    expect(publishMessageMock.callCount).to.equal(0);
+    // Check that the workflow was not triggered
+    expect(createExecutionStub.callCount).to.equal(0);
   });
 });
