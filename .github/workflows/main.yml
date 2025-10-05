@@ -3,6 +3,7 @@ name: Khortytsia CI/CD
 on:
   push:
     branches:
+      - dev
       - main
 
 jobs:
