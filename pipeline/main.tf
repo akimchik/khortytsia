@@ -18,6 +18,11 @@ provider "google" {
   region  = var.region
 }
 
+resource "google_project_service" "cloudbuild" {
+  project = var.project_id
+  service = "cloudbuild.googleapis.com"
+}
+
 resource "random_string" "bucket_prefix" {
   length  = 8
   special = false
@@ -31,7 +36,7 @@ resource "google_storage_bucket" "terraform_state" {
 }
 
 resource "google_storage_bucket" "source_bucket" {
-  name          = "${var.project_id}-source-${random_string.bucket_prefix.result}"
+  name          = "${var.project_id}-source-code"
   location      = var.region
   force_destroy = true
 }
@@ -82,9 +87,13 @@ resource "google_pubsub_topic" "final_analysis" {
   name = "final-analysis"
 }
 
+resource "google_pubsub_topic" "final_leads" {
+  name = "final-leads"
+}
+
 resource "google_cloudfunctions_function" "trigger_ingestion_cycle" {
   name        = "trigger_ingestion_cycle"
-  runtime     = "nodejs16"
+  runtime     = "nodejs20"
   entry_point = "triggerIngestionCycle"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "trigger_ingestion_cycle.zip"
@@ -113,7 +122,7 @@ resource "google_cloud_scheduler_job" "trigger_ingestion_cycle_scheduler" {
 
 resource "google_cloudfunctions_function" "fetch_source_data" {
   name        = "fetch_source_data"
-  runtime     = "nodejs16"
+  runtime     = "nodejs20"
   entry_point = "fetchSourceData"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "fetch_source_data.zip"
@@ -125,7 +134,7 @@ resource "google_cloudfunctions_function" "fetch_source_data" {
 
 resource "google_cloudfunctions_function" "filter_article_content" {
   name        = "filter_article_content"
-  runtime     = "nodejs16"
+  runtime     = "nodejs20"
   entry_point = "filterArticleContent"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "filter_article_content.zip"
@@ -140,7 +149,7 @@ resource "google_cloudfunctions_function" "filter_article_content" {
 
 resource "google_cloudfunctions_function" "core_analysis" {
   name        = "core_analysis"
-  runtime     = "nodejs16"
+  runtime     = "nodejs20"
   entry_point = "coreAnalysis"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "core_analysis.zip"
@@ -152,7 +161,7 @@ resource "google_cloudfunctions_function" "core_analysis" {
 
 resource "google_cloudfunctions_function" "external_verification" {
   name        = "external_verification"
-  runtime     = "nodejs16"
+  runtime     = "nodejs20"
   entry_point = "externalVerification"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "external_verification.zip"
@@ -164,7 +173,7 @@ resource "google_cloudfunctions_function" "external_verification" {
 
 resource "google_cloudfunctions_function" "internal_qc" {
   name        = "internal_qc"
-  runtime     = "nodejs16"
+  runtime     = "nodejs20"
   entry_point = "internalQc"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "internal_qc.zip"
@@ -176,7 +185,7 @@ resource "google_cloudfunctions_function" "internal_qc" {
 
 resource "google_cloudfunctions_function" "decision_engine" {
   name        = "decision_engine"
-  runtime     = "nodejs16"
+  runtime     = "nodejs20"
   entry_point = "decisionEngine"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "decision_engine.zip"
@@ -240,6 +249,28 @@ resource "google_project_iam_member" "internal_qc_pubsub" {
 
 # IAM for decision_engine to publish to final_analysis
 resource "google_project_iam_member" "decision_engine_pubsub" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"
+}
+
+resource "google_cloudfunctions_function" "delivery_alerter" {
+  name        = "delivery_alerter"
+  runtime     = "nodejs20"
+  entry_point = "deliverAlert"
+  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_object = "delivery_alerter.zip"
+  event_trigger {
+    event_type = "google.pubsub.topic.publish"
+    resource   = google_pubsub_topic.final_leads.name
+  }
+  environment_variables = {
+    WEBHOOK_URL = "YOUR_WEBHOOK_URL_HERE"
+  }
+}
+
+# IAM for decision_engine to publish to final-leads
+resource "google_project_iam_member" "decision_engine_final_leads_pubsub" {
   project = var.project_id
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"

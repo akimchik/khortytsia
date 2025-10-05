@@ -16,7 +16,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '20'
 
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
@@ -64,12 +64,33 @@ jobs:
           npm test
           cd ..
 
-      - name of the test: Run tests for internal_qc
+      - name: Run tests for internal_qc
         run: |
           cd internal_qc
           npm install
           npm test
           cd ..
+
+      - name: Run tests for delivery_alerter
+        run: |
+          cd delivery_alerter
+          npm install
+          npm test
+          cd ..
+
+      - name: Package and Upload Source Code
+        run: |
+          FUNCTIONS=("trigger_ingestion_cycle" "fetch_source_data" "filter_article_content" "core_analysis" "external_verification" "internal_qc" "decision_engine" "delivery_alerter")
+          BUCKET_NAME="${{ secrets.GCP_PROJECT_ID }}-source-code"
+          for FUNCTION in "${FUNCTIONS[@]}"
+          do
+            echo "Packaging $FUNCTION..."
+            cd $FUNCTION
+            zip -r "../${FUNCTION}.zip" .
+            cd ..
+            echo "Uploading ${FUNCTION}.zip to gs://$BUCKET_NAME/"
+            gsutil cp "${FUNCTION}.zip" "gs://$BUCKET_NAME/${FUNCTION}.zip"
+          done
 
       - name: Deploy infrastructure
         run: |

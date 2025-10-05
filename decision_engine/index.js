@@ -1,10 +1,18 @@
+/**
+ * @fileoverview This Cloud Function acts as the central decision-making hub of the pipeline.
+ * It synthesizes the results from the external verification and internal quality control modules
+ * to make a final judgment on the AI-generated analysis.
+ */
 
 const { PubSub } = require('@google-cloud/pubsub');
 const Joi = require('joi');
 
 const pubsub = new PubSub();
+// The topic for publishing the final, decided-upon analysis.
 const finalAnalysisTopic = 'final-analysis';
 
+// Joi schema for validating the fully enriched analysis object.
+// This ensures that the data from both verification modules is present before making a decision.
 const enrichedAnalysisSchema = Joi.object({
   companyName: Joi.string().required(),
   industry: Joi.string().required(),
@@ -33,21 +41,35 @@ const enrichedAnalysisSchema = Joi.object({
   }).required(),
 });
 
+/**
+ * Applies a set of rules to the analysis scores to determine a final decision.
+ * @param {Object} analysis The fully enriched analysis object.
+ * @returns {string} The final decision: 'Approved', 'Rejected', or 'Manual Review'.
+ */
 function decisionMatrix(analysis) {
+  // High confidence and high quality -> Automatic Approval
   if (analysis.verification.confidenceScore > 90 && analysis.internal_qc.qualityScore > 90) {
     return 'Approved';
   }
+  // Low confidence or low quality -> Automatic Rejection
   if (analysis.verification.confidenceScore < 70 || analysis.internal_qc.qualityScore < 70) {
     return 'Rejected';
   }
+  // Anything in between requires a human to look at it.
   return 'Manual Review';
 }
 
 /**
- * HTTP-triggered Cloud Function that makes a final decision on the analysis.
+ * An HTTP-triggered Cloud Function that makes a final decision on an AI analysis.
+ * 
+ * This function receives the fully enriched analysis object, containing the original AI output
+ * plus the data from the external verification and internal QC modules. It validates the object,
+ * uses a decision matrix to approve, reject, or flag for manual review, and then publishes
+ * the final result to the 'final-analysis' topic.
  *
- * @param {Object} req The Express request object.
- * @param {Object} res The Express response object.
+ * @param {Object} req The Express-style request object.
+ * @param {Object} req.body The fully enriched analysis object.
+ * @param {Object} res The Express-style response object.
  */
 exports.decisionEngine = async (req, res) => {
   try {
@@ -59,6 +81,7 @@ exports.decisionEngine = async (req, res) => {
       return;
     }
 
+    // Determine the final outcome.
     const decision = decisionMatrix(analysis);
 
     const finalAnalysis = {
@@ -67,6 +90,7 @@ exports.decisionEngine = async (req, res) => {
       decisionTimestamp: new Date().toISOString(),
     };
 
+    // Publish the final result for downstream consumers (e.g., alerting, dashboards).
     const finalMessage = { json: finalAnalysis };
     await pubsub.topic(finalAnalysisTopic).publishMessage(finalMessage);
 
