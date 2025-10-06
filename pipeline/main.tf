@@ -1,4 +1,3 @@
-
 terraform {
   required_providers {
     google = {
@@ -98,6 +97,7 @@ resource "google_cloudfunctions_function" "trigger_ingestion_cycle" {
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "trigger_ingestion_cycle.zip"
   trigger_http = true
+  depends_on = [google_project_service.cloudbuild]
 }
 
 resource "google_cloudfunctions_function_iam_member" "trigger_ingestion_cycle_invoker" {
@@ -130,6 +130,7 @@ resource "google_cloudfunctions_function" "fetch_source_data" {
     event_type = "google.pubsub.topic.publish"
     resource   = google_pubsub_topic.source_to_fetch.name
   }
+  depends_on = [google_project_service.cloudbuild]
 }
 
 resource "google_cloudfunctions_function" "filter_article_content" {
@@ -145,6 +146,7 @@ resource "google_cloudfunctions_function" "filter_article_content" {
   environment_variables = {
     KEYWORDS_BUCKET = google_storage_bucket.keywords_bucket.name
   }
+  depends_on = [google_project_service.cloudbuild]
 }
 
 resource "google_cloudfunctions_function" "core_analysis" {
@@ -157,6 +159,7 @@ resource "google_cloudfunctions_function" "core_analysis" {
     event_type = "google.pubsub.topic.publish"
     resource   = google_pubsub_topic.article_to_analyze.name
   }
+  depends_on = [google_project_service.cloudbuild]
 }
 
 resource "google_cloudfunctions_function" "external_verification" {
@@ -169,6 +172,7 @@ resource "google_cloudfunctions_function" "external_verification" {
     event_type = "google.pubsub.topic.publish"
     resource   = google_pubsub_topic.external_verification.name
   }
+  depends_on = [google_project_service.cloudbuild]
 }
 
 resource "google_cloudfunctions_function" "internal_qc" {
@@ -181,6 +185,7 @@ resource "google_cloudfunctions_function" "internal_qc" {
     event_type = "google.pubsub.topic.publish"
     resource   = google_pubsub_topic.internal_qc.name
   }
+  depends_on = [google_project_service.cloudbuild]
 }
 
 resource "google_cloudfunctions_function" "decision_engine" {
@@ -190,6 +195,7 @@ resource "google_cloudfunctions_function" "decision_engine" {
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "decision_engine.zip"
   trigger_http = true
+  depends_on = [google_project_service.cloudbuild]
 }
 
 resource "google_workflows_workflow" "khortytsia_workflow" {
@@ -267,6 +273,7 @@ resource "google_cloudfunctions_function" "delivery_alerter" {
   environment_variables = {
     WEBHOOK_URL = "YOUR_WEBHOOK_URL_HERE"
   }
+  depends_on = [google_project_service.cloudbuild]
 }
 
 # IAM for decision_engine to publish to final-leads

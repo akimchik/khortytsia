@@ -13,19 +13,23 @@ main:
 
     - parallel_verification:
         parallel:
-          steps:
-            - external_verification_step:
-                call: http.post
-                args:
-                  url: ${external_verification_url}
-                  body: ${article}
-                result: external_verification_result
-            - internal_qc_step:
-                call: http.post
-                args:
-                  url: ${internal_qc_url}
-                  body: ${article}
-                result: internal_qc_result
+          branches:
+            - external_verification_branch:
+                steps:
+                  - external_verification_step:
+                      call: http.post
+                      args:
+                        url: ${external_verification_url}
+                        body: ${article}
+                      result: external_verification_result
+            - internal_qc_branch:
+                steps:
+                  - internal_qc_step:
+                      call: http.post
+                      args:
+                        url: ${internal_qc_url}
+                        body: ${article}
+                      result: internal_qc_result
 
     - combine_base_results:
         assign:
