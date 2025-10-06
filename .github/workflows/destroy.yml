@@ -1,3 +1,4 @@
+# This workflow is manually triggered to destroy the Terraform-managed infrastructure.
 name: Manual Destroy Infrastructure
 
 on:
