@@ -4,6 +4,10 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 4.0"
     }
+    google-beta = {
+      source = "hashicorp/google-beta"
+      version = "~> 4.0"
+    }
   }
 
   backend "gcs" {
@@ -13,6 +17,11 @@ terraform {
 }
 
 provider "google" {
+  project = var.project_id
+  region  = var.region
+}
+
+provider "google-beta" {
   project = var.project_id
   region  = var.region
 }
@@ -30,6 +39,13 @@ resource "google_project_service" "bigquery" {
 resource "google_project_service" "firestore" {
   project = var.project_id
   service = "firestore.googleapis.com"
+}
+
+# Get the Pub/Sub service account email
+data "google_project_service_identity" "pubsub" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "pubsub.googleapis.com"
 }
 
 resource "random_string" "bucket_prefix" {
@@ -129,6 +145,13 @@ resource "google_bigquery_table" "approved_leads" {
 EOF
 }
 
+# Grant the Pub/Sub service account permission to write to the BigQuery table
+resource "google_project_iam_member" "pubsub_to_bigquery" {
+  project = var.project_id
+  role    = "roles/bigquery.dataEditor"
+  member  = "serviceAccount:${data.google_project_service_identity.pubsub.email}"
+}
+
 # Pub/Sub subscription that writes directly to the BigQuery table
 resource "google_pubsub_subscription" "final_analysis_to_bigquery" {
   name  = "final-analysis-to-bigquery-sub"
@@ -141,7 +164,7 @@ resource "google_pubsub_subscription" "final_analysis_to_bigquery" {
     drop_unknown_fields = true
   }
 
-  depends_on = [google_bigquery_table.approved_leads]
+  depends_on = [google_project_iam_member.pubsub_to_bigquery]
 }
 
 
