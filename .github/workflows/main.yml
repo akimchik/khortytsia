@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - doc-review
 
 jobs:
   test-and-deploy:
