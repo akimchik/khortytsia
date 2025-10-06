@@ -106,6 +106,8 @@ jobs:
           done
 
       - name: Deploy infrastructure
+        env:
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
         run: |
           cd pipeline
           terraform init
