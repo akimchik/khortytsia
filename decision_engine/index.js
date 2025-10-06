@@ -5,14 +5,14 @@
  */
 
 const { PubSub } = require('@google-cloud/pubsub');
+const { Firestore } = require('@google-cloud/firestore');
 const Joi = require('joi');
 
 const pubsub = new PubSub();
-// The topic for publishing the final, decided-upon analysis.
+const firestore = new Firestore();
 const finalAnalysisTopic = 'final-analysis';
+const manualReviewCollection = 'manual-review-queue';
 
-// Joi schema for validating the fully enriched analysis object.
-// This ensures that the data from both verification modules is present before making a decision.
 const enrichedAnalysisSchema = Joi.object({
   companyName: Joi.string().required(),
   industry: Joi.string().required(),
@@ -23,53 +23,22 @@ const enrichedAnalysisSchema = Joi.object({
   opportunityScore: Joi.number().integer().min(1).max(10).required(),
   keyQuote: Joi.string().required(),
   sourceURL: Joi.string().uri().required(),
-  verification: Joi.object({
-    confidenceScore: Joi.number().required(),
-    sourceReputationScore: Joi.number().required(),
-    corroboratingSources: Joi.number().required(),
-    corroboratingUrls: Joi.array().items(Joi.string().uri()).required(),
-    lastCheckedTimestamp: Joi.string().isoDate().required(),
-  }).required(),
-  internal_qc: Joi.object({
-    qualityScore: Joi.number().required(),
-    rulesPassed: Joi.number().required(),
-    rulesFailed: Joi.number().required(),
-    failedRules: Joi.array().items(Joi.string()).required(),
-    logicalConsistency: Joi.string().required(),
-    toneAnalysis: Joi.string().required(),
-    lastCheckedTimestamp: Joi.string().isoDate().required(),
-  }).required(),
+  verification: Joi.object().required(),
+  internal_qc: Joi.object().required(),
 });
 
-/**
- * Applies a set of rules to the analysis scores to determine a final decision.
- * @param {Object} analysis The fully enriched analysis object.
- * @returns {string} The final decision: 'Approved', 'Rejected', or 'Manual Review'.
- */
 function decisionMatrix(analysis) {
-  // High confidence and high quality -> Automatic Approval
   if (analysis.verification.confidenceScore > 90 && analysis.internal_qc.qualityScore > 90) {
     return 'Approved';
   }
-  // Low confidence or low quality -> Automatic Rejection
   if (analysis.verification.confidenceScore < 70 || analysis.internal_qc.qualityScore < 70) {
     return 'Rejected';
   }
-  // Anything in between requires a human to look at it.
   return 'Manual Review';
 }
 
 /**
  * An HTTP-triggered Cloud Function that makes a final decision on an AI analysis.
- * 
- * This function receives the fully enriched analysis object, containing the original AI output
- * plus the data from the external verification and internal QC modules. It validates the object,
- * uses a decision matrix to approve, reject, or flag for manual review, and then publishes
- * the final result to the 'final-analysis' topic.
- *
- * @param {Object} req The Express-style request object.
- * @param {Object} req.body The fully enriched analysis object.
- * @param {Object} res The Express-style response object.
  */
 exports.decisionEngine = async (req, res) => {
   try {
@@ -81,7 +50,6 @@ exports.decisionEngine = async (req, res) => {
       return;
     }
 
-    // Determine the final outcome.
     const decision = decisionMatrix(analysis);
 
     const finalAnalysis = {
@@ -90,12 +58,19 @@ exports.decisionEngine = async (req, res) => {
       decisionTimestamp: new Date().toISOString(),
     };
 
-    // Publish the final result for downstream consumers (e.g., alerting, dashboards).
-    const finalMessage = { json: finalAnalysis };
-    await pubsub.topic(finalAnalysisTopic).publishMessage(finalMessage);
-
-    console.log(`Published final analysis for ${analysis.companyName} with decision: ${decision}`);
-    res.status(200).send(`Published final analysis for ${analysis.companyName} with decision: ${decision}`);
+    if (decision === 'Manual Review') {
+      // If manual review is needed, save it to the Firestore queue instead of the final topic.
+      const docRef = firestore.collection(manualReviewCollection).doc();
+      await docRef.set(finalAnalysis);
+      console.log(`Saved analysis for ${analysis.companyName} to manual review queue.`);
+      res.status(200).send(`Analysis for ${analysis.companyName} requires manual review.`);
+    } else {
+      // Otherwise, publish the final result for downstream consumers.
+      const finalMessage = { json: finalAnalysis };
+      await pubsub.topic(finalAnalysisTopic).publishMessage(finalMessage);
+      console.log(`Published final analysis for ${analysis.companyName} with decision: ${decision}`);
+      res.status(200).send(`Published final analysis for ${analysis.companyName} with decision: ${decision}`);
+    }
 
   } catch (error) {
     console.error(`Error in decisionEngine: ${error.message}`);

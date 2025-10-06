@@ -4,6 +4,10 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 4.0"
     }
+    google-beta = {
+      source = "hashicorp/google-beta"
+      version = "~> 4.0"
+    }
   }
 
   backend "gcs" {
@@ -17,9 +21,31 @@ provider "google" {
   region  = var.region
 }
 
+provider "google-beta" {
+  project = var.project_id
+  region  = var.region
+}
+
 resource "google_project_service" "cloudbuild" {
   project = var.project_id
   service = "cloudbuild.googleapis.com"
+}
+
+resource "google_project_service" "bigquery" {
+  project = var.project_id
+  service = "bigquery.googleapis.com"
+}
+
+resource "google_project_service" "firestore" {
+  project = var.project_id
+  service = "firestore.googleapis.com"
+}
+
+# Get the Pub/Sub service account email
+resource "google_project_service_identity" "pubsub" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "pubsub.googleapis.com"
 }
 
 resource "random_string" "bucket_prefix" {
@@ -89,6 +115,49 @@ resource "google_pubsub_topic" "final_analysis" {
 resource "google_pubsub_topic" "final_leads" {
   name = "final-leads"
 }
+
+# BigQuery Dataset and Table to store final results
+resource "google_bigquery_dataset" "results_dataset" {
+  dataset_id = "khortytsia_results"
+  description = "Dataset to store results from the Khortytsia pipeline"
+  location = var.region
+  depends_on = [google_project_service.bigquery]
+}
+
+resource "google_bigquery_table" "approved_leads" {
+  dataset_id = google_bigquery_dataset.results_dataset.dataset_id
+  table_id   = "approved_leads"
+  deletion_protection = false
+
+  schema = <<EOF
+[
+  {"name": "data", "type": "STRING"}
+]
+EOF
+}
+
+# Grant the Pub/Sub service account permission to write to the BigQuery table
+resource "google_project_iam_member" "pubsub_to_bigquery" {
+  project = var.project_id
+  role    = "roles/bigquery.dataEditor"
+  member  = "serviceAccount:${google_project_service_identity.pubsub.email}"
+}
+
+# Pub/Sub subscription that writes directly to the BigQuery table
+resource "google_pubsub_subscription" "final_analysis_to_bigquery" {
+  name  = "final-analysis-to-bigquery-sub"
+  topic = google_pubsub_topic.final_analysis.name
+
+  bigquery_config {
+    table = "${google_bigquery_table.approved_leads.project}:${google_bigquery_table.approved_leads.dataset_id}.${google_bigquery_table.approved_leads.table_id}"
+    use_topic_schema = false
+    write_metadata = false
+    drop_unknown_fields = true
+  }
+
+  depends_on = [google_project_iam_member.pubsub_to_bigquery]
+}
+
 
 resource "google_cloudfunctions_function" "trigger_ingestion_cycle" {
   name        = "trigger_ingestion_cycle"
@@ -198,6 +267,26 @@ resource "google_cloudfunctions_function" "decision_engine" {
   depends_on = [google_project_service.cloudbuild]
 }
 
+resource "google_cloudfunctions_function" "get_manual_review" {
+  name        = "get_manual_review"
+  runtime     = "nodejs20"
+  entry_point = "getManualReview"
+  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_object = "get_manual_review.zip"
+  trigger_http = true
+  depends_on = [google_project_service.cloudbuild, google_project_service.firestore]
+}
+
+resource "google_cloudfunctions_function" "submit_correction" {
+  name        = "submit_correction"
+  runtime     = "nodejs20"
+  entry_point = "submitCorrection"
+  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_object = "submit_correction.zip"
+  trigger_http = true
+  depends_on = [google_project_service.cloudbuild, google_project_service.firestore]
+}
+
 resource "google_workflows_workflow" "khortytsia_workflow" {
   name            = "khortytsia-workflow"
   region          = var.region
@@ -281,4 +370,23 @@ resource "google_project_iam_member" "decision_engine_final_leads_pubsub" {
   project = var.project_id
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"
+}
+
+# IAM for functions to access Firestore
+resource "google_project_iam_member" "decision_engine_firestore" {
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"
+}
+
+resource "google_project_iam_member" "get_manual_review_firestore" {
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${google_cloudfunctions_function.get_manual_review.service_account_email}"
+}
+
+resource "google_project_iam_member" "submit_correction_firestore" {
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${google_cloudfunctions_function.submit_correction.service_account_email}"
 }
