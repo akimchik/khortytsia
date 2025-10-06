@@ -10,9 +10,13 @@ main:
           - decision_engine_url: "https://us-central1-${project_id}.cloudfunctions.net/decision_engine"
           - article: ${json.decode(base64.decode(event.data.message.data))}
           - combined_results: {}
+          # Pre-declare variables to be used by parallel branches
+          - external_verification_result: null
+          - internal_qc_result: null
 
     - parallel_verification:
         parallel:
+          # Specify which existing variables the branches can write to
           shared: [external_verification_result, internal_qc_result]
           branches:
             - external_verification_branch:
@@ -22,7 +26,7 @@ main:
                       args:
                         url: ${external_verification_url}
                         body: ${article}
-                      result: external_verification_result
+                      result: external_verification_result # Assigns result to the shared variable
             - internal_qc_branch:
                 steps:
                   - internal_qc_step:
@@ -30,7 +34,7 @@ main:
                       args:
                         url: ${internal_qc_url}
                         body: ${article}
-                      result: internal_qc_result
+                      result: internal_qc_result # Assigns result to the shared variable
 
     - combine_base_results:
         assign:
