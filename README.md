@@ -79,6 +79,42 @@ The CI/CD pipeline is configured to run all tests for all modules before any dep
 
 ## 📊 Visualizing Results: Building a Dashboard
 
+The Terraform script automatically creates a BigQuery dataset (`khortytsia_results`) and a table (`approved_leads`) to store all approved leads from the pipeline. You can connect this table to a free tool like Google Looker Studio to build your dashboard.
+
+**Step-by-Step Instructions:**
+
+1.  **Navigate to Looker Studio**
+    *   Go to [lookerstudio.google.com](https://lookerstudio.google.com).
+
+2.  **Create a New Data Source**
+    *   In the top left, click **+ Create** and select **Data Source**.
+    *   Select the **BigQuery** connector from the list of Google Connectors.
+
+3.  **Connect to Your Table**
+    *   Authorize Looker Studio to access your Google Cloud project if prompted.
+    *   In the column list that appears, select your project ID (e.g., `gen-lang-client-0963337330`).
+    *   Next, select the dataset `khortytsia_results`.
+    *   Finally, select the table `approved_leads`.
+    *   In the upper right corner, click **CONNECT**.
+
+4.  **Create Your Report**
+    *   On the next screen (which shows all your data fields), click **CREATE REPORT** in the upper right.
+    *   You will now be in the report editor with a blank canvas and your data source connected.
+
+5.  **Build Your First Charts**
+    *   **Example 1: Create a Table of Leads**
+        *   From the menu, select **Add a chart** > **Table**.
+        *   In the **Data** panel on the right, you can add "Dimensions" (your text fields) and "Metrics" (your number fields).
+        *   Add dimensions like `companyName`, `summary`, and `sourceURL`.
+        *   Add metrics like `opportunityScore`.
+    *   **Example 2: Create a Map of Opportunities**
+        *   From the menu, select **Add a chart** > **Bubble Map**.
+        *   In the **Data** panel, set the **Location** dimension to your `region` field.
+        *   Set the **Bubble size** metric to `opportunityScore` to make high-value leads appear as larger bubbles.
+
+
+## 📊 Visualizing Results: Building a Dashboard
+
 ### 🧑‍⚖️ Using the Manual Review Interface
 
 If the pipeline flags an analysis for "Manual Review," it will be sent to a queue. You can use the provided HTML interface to view, edit, and approve these items.

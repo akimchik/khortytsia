@@ -105,6 +105,7 @@ resource "google_bigquery_dataset" "results_dataset" {
   dataset_id = "khortytsia_results"
   description = "Dataset to store results from the Khortytsia pipeline"
   location = var.region
+  depends_on = [google_project_service.bigquery]
 }
 
 resource "google_bigquery_table" "approved_leads" {
