@@ -42,7 +42,7 @@ resource "google_project_service" "firestore" {
 }
 
 # Get the Pub/Sub service account email
-data "google_project_service_identity" "pubsub" {
+resource "google_project_service_identity" "pubsub" {
   provider = google-beta
   project  = var.project_id
   service  = "pubsub.googleapis.com"
@@ -149,7 +149,7 @@ EOF
 resource "google_project_iam_member" "pubsub_to_bigquery" {
   project = var.project_id
   role    = "roles/bigquery.dataEditor"
-  member  = "serviceAccount:${data.google_project_service_identity.pubsub.email}"
+  member  = "serviceAccount:${google_project_service_identity.pubsub.email}"
 }
 
 # Pub/Sub subscription that writes directly to the BigQuery table
