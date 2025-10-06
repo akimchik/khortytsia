@@ -13,6 +13,7 @@ main:
 
     - parallel_verification:
         parallel:
+          shared: [external_verification_result, internal_qc_result]
           branches:
             - external_verification_branch:
                 steps:
