@@ -62,3 +62,13 @@ output "trigger_ingestion_cycle_scheduler_name" {
   description = "The name of the Cloud Scheduler job."
   value       = google_cloud_scheduler_job.trigger_ingestion_cycle_scheduler.name
 }
+
+output "get_manual_review_url" {
+  description = "The URL of the get_manual_review function."
+  value       = google_cloudfunctions_function.get_manual_review.https_trigger_url
+}
+
+output "submit_correction_url" {
+  description = "The URL of the submit_correction function."
+  value       = google_cloudfunctions_function.submit_correction.https_trigger_url
+}
