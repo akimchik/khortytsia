@@ -1,2 +1,2 @@
-project_id = "gen-lang-client-0963337330"
+project_id = "${{ secrets.GCP_PROJECT_ID }}"
 schedule   = "*/30 * * * *"
