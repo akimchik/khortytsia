@@ -28,11 +28,18 @@ describe('filterArticleContent', () => {
       data: Buffer.from(JSON.stringify({ article_url: 'https://example.com/news-story-123', source_domain: 'example.com' })).toString('base64'),
     };
 
+    // Mock the external calls
+    const getKeywordsStub = sinon.stub(functionToTest, 'getKeywords').resolves(['business']);
+    const getArticleContentStub = sinon.stub(functionToTest, 'fetchAndExtractContent').resolves('This is a sample article about business and tech.');
+
     await functionToTest.filterArticleContent(message, {});
 
     // Check that a message was published
     expect(publishMessageMock.callCount).to.equal(1);
     expect(publishMessageMock.firstCall.args[0].json.clean_text).to.equal('This is a sample article about business and tech.');
+
+    getKeywordsStub.restore();
+    getArticleContentStub.restore();
   });
 
   it('should not publish a message if the article is not relevant', async () => {
@@ -40,14 +47,16 @@ describe('filterArticleContent', () => {
       data: Buffer.from(JSON.stringify({ article_url: 'https://example.com/news-story-123', source_domain: 'example.com' })).toString('base64'),
     };
 
-    // Override the mock to return irrelevant content
-    const checkForKeywordsStub = sinon.stub(functionToTest, 'checkForKeywords').resolves(false);
+    // Mock the external calls
+    const getKeywordsStub = sinon.stub(functionToTest, 'getKeywords').resolves(['finance']);
+    const getArticleContentStub = sinon.stub(functionToTest, 'fetchAndExtractContent').resolves('This is a sample article about sports and leisure.');
 
     await functionToTest.filterArticleContent(message, {});
 
     // Check that no message was published
     expect(publishMessageMock.callCount).to.equal(0);
 
-    checkForKeywordsStub.restore();
+    getKeywordsStub.restore();
+    getArticleContentStub.restore();
   });
 });

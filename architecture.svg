@@ -1,0 +1,167 @@
+<svg width="900" height="1250" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+  <defs>
+    <marker id="arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333" />
+    </marker>
+  </defs>
+
+  <style>
+    .title-text { font-size: 24px; font-weight: bold; text-anchor: middle; }
+    .module-rect { stroke: #4A5568; stroke-width: 1.5; rx: 8; ry: 8; }
+    .module-title { font-size: 16px; font-weight: bold; color: #1A202C; margin: 0 0 5px 0; }
+    .module-desc { font-size: 12px; color: #4A5568; margin: 0; line-height: 1.5; }
+    .service-desc { font-size: 11px; color: #2C5282; margin-top: 6px; }
+    .html-text-container { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; text-align: center; line-height: 1.4; }
+    .connector-line { stroke: #4A5568; stroke-width: 2.5; marker-end: url(#arrowhead); fill: none; }
+    .loop-line { stroke: #718096; stroke-width: 2; stroke-dasharray: 6, 4; marker-end: url(#arrowhead); fill: none; }
+    .label-text { font-size: 12px; font-style: italic; fill: #718096; text-anchor: middle; }
+    code { font-family: monospace; background-color: rgba(0,0,0,0.05); padding: 2px 4px; border-radius: 4px; font-size: 11px; }
+  </style>
+
+  <text x="450" y="45" class="title-text">Khortytsia: Architecture &amp; GCP Components</text>
+
+  <!-- Module 1: Data Ingestion -->
+  <g>
+    <rect x="315" y="90" width="270" height="125" fill="#F7FAFC" class="module-rect" />
+    <foreignObject x="320" y="95" width="260" height="115">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="html-text-container">
+        <p class="module-title">1. Data Ingestion (The Hunt)</p>
+        <p class="module-desc">
+          <code>trigger_ingestion_cycle</code><br/>
+          <code>fetch_source_data</code><br/>
+          <code>filter_article_content</code>
+        </p>
+        <p class="service-desc"><strong>Services:</strong> Cloud Scheduler, Pub/Sub, Cloud Storage</p>
+      </div>
+    </foreignObject>
+  </g>
+  <path class="connector-line" d="M 450 215 L 450 245" />
+  <text x="450" y="235" class="label-text">Relevant Articles</text>
+
+  <!-- Module 2: Core Analysis -->
+  <g>
+    <rect x="315" y="245" width="270" height="100" fill="#EBF8FF" class="module-rect" />
+    <foreignObject x="320" y="250" width="260" height="90">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="html-text-container">
+        <p class="module-title">2. Core Analysis (The Brain)</p>
+        <p class="module-desc"><code>core_analysis</code></p>
+        <p class="service-desc"><strong>Service:</strong> Vertex AI (Gemini Pro)</p>
+      </div>
+    </foreignObject>
+  </g>
+  <path class="connector-line" d="M 450 345 L 450 375" />
+  <text x="450" y="365" class="label-text">"Raw" JSON Analysis</text>
+
+  <!-- Parallel Verification Block -->
+  <g>
+    <path class="connector-line" d="M 450 375 L 270 405" />
+    <path class="connector-line" d="M 450 375 L 630 405" />
+    <rect x="95" y="405" width="350" height="90" fill="#FFFBEB" class="module-rect" />
+    <foreignObject x="100" y="410" width="340" height="80">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="html-text-container">
+        <p class="module-title">3. External Verification (The Shield)</p>
+        <p class="module-desc"><code>external_verification</code></p>
+        <p class="service-desc"><strong>Services:</strong> Search API (Simulated)</p>
+      </div>
+    </foreignObject>
+    <rect x="455" y="405" width="350" height="90" fill="#FFFBEB" class="module-rect" />
+    <foreignObject x="460" y="410" width="340" height="80">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="html-text-container">
+        <p class="module-title">4. Internal QC (Self-Reflection)</p>
+        <p class="module-desc"><code>internal_qc</code></p>
+        <p class="service-desc"><strong>Services:</strong> Cloud Functions Logic</p>
+      </div>
+    </foreignObject>
+  </g>
+  
+  <!-- Converging Lines -->
+  <path class="connector-line" d="M 270 495 L 450 525" />
+  <path class="connector-line" d="M 630 495 L 450 525" />
+  <text x="450" y="515" class="label-text">Enriched Analysis</text>
+
+  <!-- Module 5: Decision Engine -->
+  <g>
+    <rect x="315" y="525" width="270" height="100" fill="#FEF3C7" class="module-rect" />
+    <foreignObject x="320" y="530" width="260" height="90">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="html-text-container">
+        <p class="module-title">5. Decision &amp; Review (The Verdict)</p>
+        <p class="module-desc"><code>decision_engine</code></p>
+        <p class="service-desc"><strong>Service:</strong> Cloud Workflows</p>
+      </div>
+    </foreignObject>
+  </g>
+  
+  <!-- Branching Paths from Decision -->
+  <path class="connector-line" d="M 450 625 L 450 715" />
+  <text x="515" y="675" class="label-text">Auto-Approved</text>
+  <path class="loop-line" d="M 315 575 L 175 575 L 175 645" />
+  <text x="245" y="605" class="label-text">Flagged for Review</text>
+
+  <!-- Human Review Block (on the left) -->
+  <g>
+    <rect x="50" y="645" width="250" height="110" fill="#FEF2F2" class="module-rect" />
+    <foreignObject x="55" y="650" width="240" height="100">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="html-text-container">
+        <p class="module-title">Human Analyst Review</p>
+        <p class="module-desc">
+            <code>get_manual_review</code><br/>
+            <code>submit_correction</code>
+        </p>
+        <p class="service-desc"><strong>Service:</strong> Firestore</p>
+      </div>
+    </foreignObject>
+    <path class="loop-line" d="M 300 695 L 350 695 L 350 715 L 450 715" />
+    <text x="325" y="710" class="label-text">Approved</text>
+    <path class="loop-line" d="M 175 755 L 175 785" />
+    <rect x="75" y="785" width="200" height="50" fill="#EAEAEA" class="module-rect" />
+    <foreignObject x="80" y="790" width="190" height="40">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="html-text-container">
+        <p class="module-desc">Fine-Tuning Dataset</p>
+      </div>
+    </foreignObject>
+  </g>
+
+  <!-- Final Database -->
+  <g>
+    <rect x="315" y="715" width="270" height="60" fill="#F0FFF4" class="module-rect" />
+    <foreignObject x="320" y="720" width="260" height="50">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="html-text-container">
+        <p class="module-title">Verified Leads Database</p>
+      </div>
+    </foreignObject>
+  </g>
+  
+  <path class="connector-line" d="M 450 775 L 450 805" />
+
+  <!-- Module 6: Delivery -->
+  <g>
+    <rect x="315" y="805" width="270" height="90" fill="#F3E8FF" class="module-rect" />
+    <foreignObject x="320" y="810" width="260" height="80">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="html-text-container">
+        <p class="module-title">6. Delivery (The Bounty)</p>
+        <p class="module-desc"><code>delivery_alerter</code></p>
+        <p class="service-desc"><strong>Services:</strong> Pub/Sub, Webhooks</p>
+      </div>
+    </foreignObject>
+  </g>
+  
+  <!-- Final Outputs -->
+  <g>
+    <path class="connector-line" d="M 450 895 L 320 955" />
+    <path class="connector-line" d="M 450 895 L 580 955" />
+    <rect x="195" y="955" width="250" height="70" fill="#F7FAFC" class="module-rect" />
+    <foreignObject x="200" y="960" width="240" height="60">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="html-text-container">
+        <p class="module-title">Real-time Alerts</p>
+        <p class="module-desc">(Slack / Teams)</p>
+      </div>
+    </foreignObject>
+    <rect x="455" y="955" width="250" height="70" fill="#F7FAFC" class="module-rect" />
+    <foreignObject x="460" y="960" width="240" height="60">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="html-text-container">
+        <p class="module-title">Strategic Dashboard</p>
+        <p class="module-desc">(Looker Studio)</p>
+      </div>
+    </foreignObject>
+  </g>
+</svg>

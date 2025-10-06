@@ -1,0 +1,20 @@
+{
+  "name": "external-verification",
+  "version": "1.0.0",
+  "description": "Verifies article analysis against external sources",
+  "main": "index.js",
+  "dependencies": {
+    "@google-cloud/pubsub": "^5.2.0",
+    "axios": "^1.12.2",
+    "google-auth-library": "^8.0.2",
+    "joi": "^17.6.0"
+  },
+  "devDependencies": {
+    "chai": "^4.3.4",
+    "mocha": "^11.7.4",
+    "sinon": "^12.0.1"
+  },
+  "scripts": {
+    "test": "mocha"
+  }
+}

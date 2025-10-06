@@ -1,10 +1,14 @@
-
 terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
       version = "~> 4.0"
     }
+  }
+
+  backend "gcs" {
+    bucket  = "khortytsia-terraform-state"
+    prefix  = "terraform/state"
   }
 }
 
@@ -13,14 +17,25 @@ provider "google" {
   region  = var.region
 }
 
+resource "google_project_service" "cloudbuild" {
+  project = var.project_id
+  service = "cloudbuild.googleapis.com"
+}
+
 resource "random_string" "bucket_prefix" {
   length  = 8
   special = false
   upper   = false
 }
 
+resource "google_storage_bucket" "terraform_state" {
+  name          = "khortytsia-terraform-state"
+  location      = var.region
+  force_destroy = true
+}
+
 resource "google_storage_bucket" "source_bucket" {
-  name          = "${var.project_id}-source-${random_string.bucket_prefix.result}"
+  name          = "${var.project_id}-source-code"
   location      = var.region
   force_destroy = true
 }
@@ -55,13 +70,34 @@ resource "google_pubsub_topic" "article_to_analyze" {
   name = "article-to-analyze"
 }
 
+resource "google_pubsub_topic" "external_verification" {
+  name = "external-verification"
+}
+
+resource "google_pubsub_topic" "internal_qc" {
+  name = "internal-qc"
+}
+
+resource "google_pubsub_topic" "decision_engine_queue" {
+  name = "decision-engine-queue"
+}
+
+resource "google_pubsub_topic" "final_analysis" {
+  name = "final-analysis"
+}
+
+resource "google_pubsub_topic" "final_leads" {
+  name = "final-leads"
+}
+
 resource "google_cloudfunctions_function" "trigger_ingestion_cycle" {
   name        = "trigger_ingestion_cycle"
-  runtime     = "nodejs16"
+  runtime     = "nodejs20"
   entry_point = "triggerIngestionCycle"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "trigger_ingestion_cycle.zip"
   trigger_http = true
+  depends_on = [google_project_service.cloudbuild]
 }
 
 resource "google_cloudfunctions_function_iam_member" "trigger_ingestion_cycle_invoker" {
@@ -86,7 +122,7 @@ resource "google_cloud_scheduler_job" "trigger_ingestion_cycle_scheduler" {
 
 resource "google_cloudfunctions_function" "fetch_source_data" {
   name        = "fetch_source_data"
-  runtime     = "nodejs16"
+  runtime     = "nodejs20"
   entry_point = "fetchSourceData"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "fetch_source_data.zip"
@@ -94,11 +130,12 @@ resource "google_cloudfunctions_function" "fetch_source_data" {
     event_type = "google.pubsub.topic.publish"
     resource   = google_pubsub_topic.source_to_fetch.name
   }
+  depends_on = [google_project_service.cloudbuild]
 }
 
 resource "google_cloudfunctions_function" "filter_article_content" {
   name        = "filter_article_content"
-  runtime     = "nodejs16"
+  runtime     = "nodejs20"
   entry_point = "filterArticleContent"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "filter_article_content.zip"
@@ -109,6 +146,62 @@ resource "google_cloudfunctions_function" "filter_article_content" {
   environment_variables = {
     KEYWORDS_BUCKET = google_storage_bucket.keywords_bucket.name
   }
+  depends_on = [google_project_service.cloudbuild]
+}
+
+resource "google_cloudfunctions_function" "core_analysis" {
+  name        = "core_analysis"
+  runtime     = "nodejs20"
+  entry_point = "coreAnalysis"
+  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_object = "core_analysis.zip"
+  event_trigger {
+    event_type = "google.pubsub.topic.publish"
+    resource   = google_pubsub_topic.article_to_analyze.name
+  }
+  depends_on = [google_project_service.cloudbuild]
+}
+
+resource "google_cloudfunctions_function" "external_verification" {
+  name        = "external_verification"
+  runtime     = "nodejs20"
+  entry_point = "externalVerification"
+  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_object = "external_verification.zip"
+  event_trigger {
+    event_type = "google.pubsub.topic.publish"
+    resource   = google_pubsub_topic.external_verification.name
+  }
+  depends_on = [google_project_service.cloudbuild]
+}
+
+resource "google_cloudfunctions_function" "internal_qc" {
+  name        = "internal_qc"
+  runtime     = "nodejs20"
+  entry_point = "internalQc"
+  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_object = "internal_qc.zip"
+  event_trigger {
+    event_type = "google.pubsub.topic.publish"
+    resource   = google_pubsub_topic.internal_qc.name
+  }
+  depends_on = [google_project_service.cloudbuild]
+}
+
+resource "google_cloudfunctions_function" "decision_engine" {
+  name        = "decision_engine"
+  runtime     = "nodejs20"
+  entry_point = "decisionEngine"
+  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_object = "decision_engine.zip"
+  trigger_http = true
+  depends_on = [google_project_service.cloudbuild]
+}
+
+resource "google_workflows_workflow" "khortytsia_workflow" {
+  name            = "khortytsia-workflow"
+  region          = var.region
+  source_contents = file("../workflow.yaml")
 }
 
 # IAM for trigger_ingestion_cycle to publish to source-to-fetch
@@ -130,4 +223,62 @@ resource "google_project_iam_member" "filter_article_content_pubsub" {
   project = var.project_id
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:${google_cloudfunctions_function.filter_article_content.service_account_email}"
+}
+
+# IAM for core_analysis to invoke the workflow
+resource "google_project_iam_member" "core_analysis_workflow_invoker" {
+  project = var.project_id
+  role    = "roles/workflows.invoker"
+  member  = "serviceAccount:${google_cloudfunctions_function.core_analysis.service_account_email}"
+}
+
+# IAM for core_analysis to use Vertex AI
+resource "google_project_iam_member" "core_analysis_vertexai" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_cloudfunctions_function.core_analysis.service_account_email}"
+}
+
+# IAM for external_verification to publish to decision-engine-queue
+resource "google_project_iam_member" "external_verification_pubsub" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_cloudfunctions_function.external_verification.service_account_email}"
+}
+
+# IAM for internal_qc to publish to decision-engine-queue
+resource "google_project_iam_member" "internal_qc_pubsub" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_cloudfunctions_function.internal_qc.service_account_email}"
+}
+
+# IAM for decision_engine to publish to final_analysis
+resource "google_project_iam_member" "decision_engine_pubsub" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"
+}
+
+resource "google_cloudfunctions_function" "delivery_alerter" {
+  name        = "delivery_alerter"
+  runtime     = "nodejs20"
+  entry_point = "deliverAlert"
+  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_object = "delivery_alerter.zip"
+  event_trigger {
+    event_type = "google.pubsub.topic.publish"
+    resource   = google_pubsub_topic.final_leads.name
+  }
+  environment_variables = {
+    WEBHOOK_URL = "YOUR_WEBHOOK_URL_HERE"
+  }
+  depends_on = [google_project_service.cloudbuild]
+}
+
+# IAM for decision_engine to publish to final-leads
+resource "google_project_iam_member" "decision_engine_final_leads_pubsub" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"
 }

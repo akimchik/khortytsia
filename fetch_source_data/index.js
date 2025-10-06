@@ -1,13 +1,22 @@
+/**
+ * @fileoverview This Cloud Function is responsible for fetching a list of article URLs from a single data source.
+ * It is triggered by a message on the 'source-to-fetch' Pub/Sub topic.
+ */
 
 const { PubSub } = require('@google-cloud/pubsub');
 const pubsub = new PubSub();
 const topicName = 'article-to-filter';
 
 /**
- * Pub/Sub-triggered Cloud Function that fetches data from a source.
+ * A Pub/Sub-triggered Cloud Function that fetches raw article data from a given source.
+ * 
+ * This function receives a source URL and type (API or Scrape), fetches a list of
+ * individual article URLs from that source, checks for duplicates against a (simulated) persistent store,
+ * and then publishes a message for each new, unique article to the 'article-to-filter' topic.
  *
- * @param {Object} message The Pub/Sub message.
- * @param {Object} context The event metadata.
+ * @param {Object} message The Pub/Sub message, containing the base64-encoded data.
+ * @param {string} message.data The base64-encoded JSON string with source details.
+ * @param {Object} context The event metadata provided by Google Cloud Functions.
  */
 exports.fetchSourceData = async (message, context) => {
   try {
@@ -16,12 +25,14 @@ exports.fetchSourceData = async (message, context) => {
 
     console.log(`Fetching data from ${source_url} (${source_type})`);
 
-    // Placeholder for fetching and parsing logic
+    // In a real implementation, this would use different strategies (e.g., Axios for APIs,
+    // Puppeteer or Cheerio for scraping) based on the source_type.
     const articleUrls = await fetchArticleUrls(source_url, source_type);
 
-    // Placeholder for duplicate checking
+    // To prevent processing the same article multiple times, we check against a database or cache.
     const newArticleUrls = await checkForDuplicates(articleUrls);
 
+    // For each new article, publish a message to the next topic for filtering.
     for (const articleUrl of newArticleUrls) {
       const message = {
         json: {
@@ -37,8 +48,14 @@ exports.fetchSourceData = async (message, context) => {
   }
 };
 
+/**
+ * Simulates fetching a list of article URLs from a source.
+ * @param {string} source_url The URL of the data source.
+ * @param {string} source_type The type of the data source ('API' or 'Scrape').
+ * @returns {Promise<string[]>} A promise that resolves to an array of article URLs.
+ */
 async function fetchArticleUrls(source_url, source_type) {
-  // In a real implementation, this would use different strategies based on source_type
+  // This is a placeholder. A real implementation would have robust logic here.
   console.log(`Simulating fetching articles from ${source_url}`);
   return [
     `https://example.com/news-story-123?source=${new URL(source_url).hostname}`,
@@ -46,10 +63,16 @@ async function fetchArticleUrls(source_url, source_type) {
   ];
 }
 
+/**
+ * Simulates checking for duplicate article URLs.
+ * @param {string[]} articleUrls An array of article URLs to check.
+ * @returns {Promise<string[]>} A promise that resolves to an array of unique article URLs.
+ */
 async function checkForDuplicates(articleUrls) {
-  // In a real implementation, this would check against a database or cache
+  // This is a placeholder. A real implementation would check against a database like Redis or Firestore.
   console.log('Simulating duplicate check...');
   return articleUrls;
 }
 
+// Export the pubsub client for easier testing and mocking.
 exports.pubsub = pubsub;

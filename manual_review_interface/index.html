@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Khortytsia - Manual Review</title>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+    .container {
+      width: 80%;
+      margin: 0 auto;
+    }
+    .analysis {
+      border: 1px solid #ccc;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      margin-bottom: 10px;
+    }
+    label {
+      display: block;
+      font-weight: bold;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Khortytsia - Manual Review</h1>
+    <div id="analyses"></div>
+  </div>
+
+  <script>
+    async function getAnalyses() {
+      const response = await fetch('/get-manual-review');
+      const analyses = await response.json();
+      const analysesDiv = document.getElementById('analyses');
+      analysesDiv.innerHTML = '';
+      for (const analysis of analyses) {
+        const analysisDiv = document.createElement('div');
+        analysisDiv.classList.add('analysis');
+        analysisDiv.innerHTML = "`
+          <h2>${analysis.companyName}</h2>
+          <form onsubmit=\"submitCorrection(event, '${analysis.id}')\">
+            <div class=\"form-group\">
+              <label>Company Name</label>
+              <input type=\"text\" name=\"companyName\" value=\"${analysis.companyName}\">
+            </div>
+            <div class=\"form-group\">
+              <label>Industry</label>
+              <input type=\"text\" name=\"industry\" value=\"${analysis.industry}\">
+            </div>
+            <div class=\"form-group\">
+              <label>Region</label>
+              <input type=\"text\" name=\"region\" value=\"${analysis.region}\">
+            </div>
+            <div class=\"form-group\">
+              <label>Opportunity Type</label>
+              <input type=\"text\" name=\"opportunityType\" value=\"${analysis.opportunityType}\">
+            </div>
+            <div class=\"form-group\">
+              <label>Summary</label>
+              <textarea name=\"summary\">${analysis.summary}</textarea>
+            </div>
+            <div class=\"form-group\">
+              <label>Potential Need</label>
+              <textarea name=\"potentialNeed\">${analysis.potentialNeed.join('\n')}</textarea>
+            </div>
+            <div class=\"form-group\">
+              <label>Opportunity Score</label>
+              <input type=\"number\" name=\"opportunityScore\" value=\"${analysis.opportunityScore}\">
+            </div>
+            <div class=\"form-group\">
+              <label>Key Quote</label>
+              <textarea name=\"keyQuote\">${analysis.keyQuote}</textarea>
+            </div>
+            <button type=\"submit\">Submit Correction</button>
+          </form>
+        ";
+        analysesDiv.appendChild(analysisDiv);
+      }
+    }
+
+    async function submitCorrection(event, id) {
+      event.preventDefault();
+      const form = event.target;
+      const formData = new FormData(form);
+      const correctedAnalysis = {
+        id,
+        companyName: formData.get('companyName'),
+        industry: formData.get('industry'),
+        region: formData.get('region'),
+        opportunityType: formData.get('opportunityType'),
+        summary: formData.get('summary'),
+        potentialNeed: formData.get('potentialNeed').split('\n'),
+        opportunityScore: parseInt(formData.get('opportunityScore')),
+        keyQuote: formData.get('keyQuote'),
+      };
+      await fetch('/submit-correction', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(correctedAnalysis),
+      });
+      getAnalyses();
+    }
+
+    getAnalyses();
+  </script>
+</body>
+</html>

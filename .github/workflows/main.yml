@@ -1,0 +1,113 @@
+name: Khortytsia CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Authenticate to Google Cloud
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: DEBUG - Verify Project ID Secret
+        run: |
+          echo "Attempting to create a file to verify the secret's content..."
+          touch "PROJECT_ID_IS_${{ secrets.GCP_PROJECT_ID }}"
+          echo "Listing files to reveal the exact secret value used:"
+          ls -l
+
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.2.5
+
+      - name: Run tests for trigger_ingestion_cycle
+        run: |
+          cd trigger_ingestion_cycle
+          npm install
+          npm test
+          cd ..
+
+      - name: Run tests for fetch_source_data
+        run: |
+          cd fetch_source_data
+          npm install
+          npm test
+          cd ..
+
+      - name: Run tests for filter_article_content
+        run: |
+          cd filter_article_content
+          npm install
+          npm test
+          cd ..
+
+      - name: Run tests for core_analysis
+        run: |
+          cd core_analysis
+          npm install
+          npm test
+          cd ..
+
+      - name: Run tests for external_verification
+        run: |
+          cd external_verification
+          npm install
+          npm test
+          cd ..
+
+      - name: Run tests for internal_qc
+        run: |
+          cd internal_qc
+          npm install
+          npm test
+          cd ..
+
+      - name: Run tests for delivery_alerter
+        run: |
+          cd delivery_alerter
+          npm install
+          npm test
+          cd ..
+
+      - name: Package and Upload Source Code
+        run: |
+          FUNCTIONS=("trigger_ingestion_cycle" "fetch_source_data" "filter_article_content" "core_analysis" "external_verification" "internal_qc" "decision_engine" "delivery_alerter")
+          BUCKET_NAME="${{ secrets.GCP_PROJECT_ID }}-source-code"
+          for FUNCTION in "${FUNCTIONS[@]}"
+          do
+            echo "Packaging $FUNCTION..."
+            cd $FUNCTION
+            zip -r "../${FUNCTION}.zip" .
+            cd ..
+            echo "Uploading ${FUNCTION}.zip to gs://$BUCKET_NAME/"
+            gsutil cp "${FUNCTION}.zip" "gs://$BUCKET_NAME/${FUNCTION}.zip"
+          done
+
+      - name: Deploy infrastructure
+        env:
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          cd pipeline
+          terraform init
+          terraform apply -auto-approve
