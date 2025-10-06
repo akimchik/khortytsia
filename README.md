@@ -16,8 +16,7 @@ The pipeline is a chain of event-driven Cloud Functions, orchestrated by Pub/Sub
 *   **Module 5: Decision & Human Review (The Verdict)** - Approves, rejects, or flags analysis for human review.
 *   **Module 6: Delivery (The Bounty)** - Delivers the final, verified intelligence to end-users.
 
-![Architecture Diagram](https://storage.googleapis.com/khortytsia-assets/architecture.png)  
-*Note: This is a placeholder image. You would need to create and upload your own architecture diagram to a GCS bucket.*
+![Architecture Diagram](architecture.svg)
 
 ## 📂 File Structure
 
