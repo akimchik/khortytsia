@@ -1,0 +1,41 @@
+name: Manual Destroy Infrastructure
+
+on:
+  # This allows the workflow to be triggered manually from the GitHub Actions UI
+  workflow_dispatch:
+
+jobs:
+  destroy-infrastructure:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Authenticate to GCP so Terraform can access project resources
+      - name: Authenticate to Google Cloud
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.2.5
+
+      - name: Terraform Destroy
+        id: destroy
+        # Pass the project_id to Terraform as an environment variable
+        env:
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          cd pipeline
+          terraform init
+          echo "Starting Terraform destroy..."
+          terraform destroy -auto-approve
+          echo "Infrastructure destruction complete."
