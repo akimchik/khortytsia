@@ -1,46 +1,9 @@
 <svg width="850" height="1100" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
-  <!-- Definitions for arrowheads and styles -->
+  <!-- Definitions for arrowheads -->
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#555" />
     </marker>
-    <style>
-      .module-rect {
-        stroke: #333;
-        stroke-width: 1.5;
-        rx: 8;
-        ry: 8;
-        filter: drop-shadow(0px 3px 3px rgba(0,0,0,0.1));
-      }
-      .module-title {
-        font-size: 16px;
-        font-weight: bold;
-        text-anchor: middle;
-        fill: #000;
-      }
-      .module-desc {
-        font-size: 12px;
-        text-anchor: middle;
-        fill: #444;
-      }
-      .connector-line {
-        stroke: #555;
-        stroke-width: 2;
-        marker-end: url(#arrow);
-      }
-      .loop-line {
-        stroke: #888;
-        stroke-width: 1.5;
-        stroke-dasharray: 5, 5;
-        marker-end: url(#arrow);
-      }
-      .label-text {
-        font-size: 11px;
-        font-style: italic;
-        fill: #666;
-        text-anchor: middle;
-      }
-    </style>
   </defs>
 
   <!-- Title -->
@@ -48,93 +11,90 @@
 
   <!-- Module 1: Data Ingestion -->
   <g id="module1">
-    <rect x="300" y="80" width="250" height="80" fill="#F4F6F7" class="module-rect" />
-    <text x="425" y="115" class="module-title">1. Data Ingestion (The Hunt)</text>
-    <text x="425" y="135" class="module-desc">Scans news sources for keywords</text>
+    <rect x="300" y="80" width="250" height="80" fill="#F4F6F7" stroke="#333" stroke-width="1.5" rx="8" ry="8" />
+    <text x="425" y="115" font-size="16px" font-weight="bold" text-anchor="middle" fill="#000">1. Data Ingestion (The Hunt)</text>
+    <text x="425" y="135" font-size="12px" text-anchor="middle" fill="#444">Scans news sources for keywords</text>
   </g>
-  <path class="connector-line" d="M 425 160 L 425 190" />
-  <text x="425" y="180" class="label-text">Relevant Articles</text>
+  <path d="M 425 160 L 425 190" stroke="#555" stroke-width="2" marker-end="url(#arrow)" />
+  <text x="425" y="180" font-size="11px" font-style="italic" fill="#666" text-anchor="middle">Relevant Articles</text>
 
   <!-- Module 2: Core Analysis -->
   <g id="module2">
-    <rect x="300" y="190" width="250" height="80" fill="#D6EAF8" class="module-rect" />
-    <text x="425" y="225" class="module-title">2. Core Analysis (The Brain)</text>
-    <text x="425" y="245" class="module-desc">Gemini AI extracts structured data</text>
+    <rect x="300" y="190" width="250" height="80" fill="#D6EAF8" stroke="#333" stroke-width="1.5" rx="8" ry="8" />
+    <text x="425" y="225" font-size="16px" font-weight="bold" text-anchor="middle" fill="#000">2. Core Analysis (The Brain)</text>
+    <text x="425" y="245" font-size="12px" text-anchor="middle" fill="#444">Gemini AI extracts structured data</text>
   </g>
-  <path class="connector-line" d="M 425 270 L 425 300" />
-  <text x="425" y="290" class="label-text">"Raw" JSON Analysis</text>
+  <path d="M 425 270 L 425 300" stroke="#555" stroke-width="2" marker-end="url(#arrow)" />
+  <text x="425" y="290" font-size="11px" font-style="italic" fill="#666" text-anchor="middle">"Raw" JSON Analysis</text>
 
   <!-- Parallel Verification Block -->
   <g id="verification-block">
-    <!-- Module 3: External Verification -->
-    <rect x="50" y="300" width="350" height="100" fill="#FEF9E7" class="module-rect" />
-    <text x="225" y="340" class="module-title">3. External Verification (The Shield)</text>
-    <text x="225" y="360" class="module-desc">Fact-checks claims against external sources.</text>
-    <text x="225" y="375" class="module-desc">Calculates Confidence Score.</text>
+    <rect x="50" y="300" width="350" height="100" fill="#FEF9E7" stroke="#333" stroke-width="1.5" rx="8" ry="8" />
+    <text x="225" y="340" font-size="16px" font-weight="bold" text-anchor="middle" fill="#000">3. External Verification (The Shield)</text>
+    <text x="225" y="360" font-size="12px" text-anchor="middle" fill="#444">Fact-checks claims against external sources.</text>
+    <text x="225" y="375" font-size="12px" text-anchor="middle" fill="#444">Calculates Confidence Score.</text>
     
-    <!-- Module 4: Internal QC -->
-    <rect x="450" y="300" width="350" height="100" fill="#FEF9E7" class="module-rect" />
-    <text x="625" y="340" class="module-title">4. Internal QC (Self-Reflection)</text>
-    <text x="625" y="360" class="module-desc">Checks for bias, errors, and consistency.</text>
-    <text x="625" y="375" class="module-desc">Calculates Quality Score.</text>
+    <rect x="450" y="300" width="350" height="100" fill="#FEF9E7" stroke="#333" stroke-width="1.5" rx="8" ry="8" />
+    <text x="625" y="340" font-size="16px" font-weight="bold" text-anchor="middle" fill="#000">4. Internal QC (Self-Reflection)</text>
+    <text x="625" y="360" font-size="12px" text-anchor="middle" fill="#444">Checks for bias, errors, and consistency.</text>
+    <text x="625" y="375" font-size="12px" text-anchor="middle" fill="#444">Calculates Quality Score.</text>
     
-    <!-- Entry lines -->
-    <path class="connector-line" d="M 425 300 L 225 300" />
-    <path class="connector-line" d="M 425 300 L 625 300" />
+    <path d="M 425 300 L 225 300" stroke="#555" stroke-width="2" marker-end="url(#arrow)" />
+    <path d="M 425 300 L 625 300" stroke="#555" stroke-width="2" marker-end="url(#arrow)" />
   </g>
   
   <!-- Converging Lines -->
-  <path class="connector-line" d="M 225 400 L 225 430 L 425 430" />
-  <path class="connector-line" d="M 625 400 L 625 430 L 425 430" />
-  <text x="425" y="420" class="label-text">Enriched Analysis</text>
+  <path d="M 225 400 L 225 430 L 425 430" stroke="#555" stroke-width="2" marker-end="url(#arrow)" fill="none" />
+  <path d="M 625 400 L 625 430 L 425 430" stroke="#555" stroke-width="2" marker-end="url(#arrow)" fill="none" />
+  <text x="425" y="420" font-size="11px" font-style="italic" fill="#666" text-anchor="middle">Enriched Analysis</text>
 
   <!-- Module 5: Decision Engine -->
   <g id="module5">
-    <rect x="300" y="460" width="250" height="80" fill="#FAD7A0" class="module-rect" />
-    <text x="425" y="495" class="module-title">5. Decision & Review (The Verdict)</text>
-    <text x="425" y="515" class="module-desc">Approves, rejects, or flags for review</text>
+    <rect x="300" y="460" width="250" height="80" fill="#FAD7A0" stroke="#333" stroke-width="1.5" rx="8" ry="8" />
+    <text x="425" y="495" font-size="16px" font-weight="bold" text-anchor="middle" fill="#000">5. Decision &amp; Review (The Verdict)</text>
+    <text x="425" y="515" font-size="12px" text-anchor="middle" fill="#444">Approves, rejects, or flags for review</text>
   </g>
   
   <!-- Human Review Loop -->
   <g id="human-review-loop">
-    <path class="loop-line" d="M 550 500 C 650 500, 650 650, 550 650 L 375 650" />
-    <text x="600" y="575" class="label-text">Flagged for Review</text>
-    <rect x="250" y="650" width="250" height="70" fill="#FDEDEC" class="module-rect" />
-    <text x="375" y="680" class="module-title">Human Analyst Review</text>
-    <text x="375" y="695" class="module-desc">Approve / Discard / Correct</text>
-    <path class="loop-line" d="M 375 720 L 375 750" />
-    <text x="300" y="740" class="label-text">Corrections for Fine-Tuning</text>
+    <path d="M 550 500 C 650 500, 650 650, 550 650 L 375 650" stroke="#888" stroke-width="1.5" stroke-dasharray="5, 5" marker-end="url(#arrow)" fill="none" />
+    <text x="600" y="575" font-size="11px" font-style="italic" fill="#666" text-anchor="middle">Flagged for Review</text>
+    <rect x="250" y="650" width="250" height="70" fill="#FDEDEC" stroke="#333" stroke-width="1.5" rx="8" ry="8" />
+    <text x="375" y="680" font-size="16px" font-weight="bold" text-anchor="middle" fill="#000">Human Analyst Review</text>
+    <text x="375" y="695" font-size="12px" text-anchor="middle" fill="#444">Approve / Discard / Correct</text>
+    <path d="M 375 720 L 375 750" stroke="#888" stroke-width="1.5" stroke-dasharray="5, 5" marker-end="url(#arrow)" fill="none" />
+    <text x="300" y="740" font-size="11px" font-style="italic" fill="#666" text-anchor="middle">Corrections for Fine-Tuning</text>
   </g>
   
-  <path class="connector-line" d="M 425 540 L 425 750" />
-  <text x="485" y="650" class="label-text">Auto-Approved</text>
+  <path d="M 425 540 L 425 750" stroke="#555" stroke-width="2" marker-end="url(#arrow)" />
+  <text x="485" y="650" font-size="11px" font-style="italic" fill="#666" text-anchor="middle">Auto-Approved</text>
   
   <!-- Final Database -->
   <g id="final-db">
-    <rect x="300" y="750" width="250" height="60" fill="#E9F7EF" class="module-rect" />
-    <text x="425" y="785" class="module-title">Verified Leads Database</text>
+    <rect x="300" y="750" width="250" height="60" fill="#E9F7EF" stroke="#333" stroke-width="1.5" rx="8" ry="8" />
+    <text x="425" y="785" font-size="16px" font-weight="bold" text-anchor="middle" fill="#000">Verified Leads Database</text>
   </g>
   
-  <path class="connector-line" d="M 425 810 L 425 840" />
+  <path d="M 425 810 L 425 840" stroke="#555" stroke-width="2" marker-end="url(#arrow)" />
 
   <!-- Module 6: Delivery -->
   <g id="module6">
-    <rect x="300" y="840" width="250" height="80" fill="#E8DAEF" class="module-rect" />
-    <text x="425" y="875" class="module-title">6. Delivery (The Bounty)</text>
-    <text x="425" y="895" class="module-desc">Pushes alerts and updates dashboards</text>
+    <rect x="300" y="840" width="250" height="80" fill="#E8DAEF" stroke="#333" stroke-width="1.5" rx="8" ry="8" />
+    <text x="425" y="875" font-size="16px" font-weight="bold" text-anchor="middle" fill="#000">6. Delivery (The Bounty)</text>
+    <text x="425" y="895" font-size="12px" text-anchor="middle" fill="#444">Pushes alerts and updates dashboards</text>
   </g>
   
   <!-- Final Outputs -->
   <g id="final-outputs">
-    <path class="connector-line" d="M 425 920 L 250 950" />
-    <path class="connector-line" d="M 425 920 L 600 950" />
+    <path d="M 425 920 L 250 950" stroke="#555" stroke-width="2" marker-end="url(#arrow)" />
+    <path d="M 425 920 L 600 950" stroke="#555" stroke-width="2" marker-end="url(#arrow)" />
     
-    <rect x="150" y="950" width="200" height="60" fill="#F4F6F7" class="module-rect" />
-    <text x="250" y="985" class="module-title">Real-time Alerts</text>
-    <text x="250" y="1000" class="module-desc">(Slack / Teams)</text>
+    <rect x="150" y="950" width="200" height="60" fill="#F4F6F7" stroke="#333" stroke-width="1.5" rx="8" ry="8" />
+    <text x="250" y="985" font-size="16px" font-weight="bold" text-anchor="middle" fill="#000">Real-time Alerts</text>
+    <text x="250" y="1000" font-size="12px" text-anchor="middle" fill="#444">(Slack / Teams)</text>
     
-    <rect x="500" y="950" width="200" height="60" fill="#F4F6F7" class="module-rect" />
-    <text x="600" y="985" class="module-title">Strategic Dashboard</text>
-    <text x="600" y="1000" class="module-desc">(Looker Studio)</text>
+    <rect x="500" y="950" width="200" height="60" fill="#F4F6F7" stroke="#333" stroke-width="1.5" rx="8" ry="8" />
+    <text x="600" y="985" font-size="16px" font-weight="bold" text-anchor="middle" fill="#000">Strategic Dashboard</text>
+    <text x="600" y="1000" font-size="12px" text-anchor="middle" fill="#444">(Looker Studio)</text>
   </g>
 </svg>
