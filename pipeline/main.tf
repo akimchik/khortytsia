@@ -131,16 +131,7 @@ resource "google_bigquery_table" "approved_leads" {
 
   schema = <<EOF
 [
-  {"name": "companyName", "type": "STRING"},
-  {"name": "industry", "type": "STRING"},
-  {"name": "region", "type": "STRING"},
-  {"name": "opportunityType", "type": "STRING"},
-  {"name": "summary", "type": "STRING"},
-  {"name": "opportunityScore", "type": "INTEGER"},
-  {"name": "keyQuote", "type": "STRING"},
-  {"name": "sourceURL", "type": "STRING"},
-  {"name": "decision", "type": "STRING"},
-  {"name": "decisionTimestamp", "type": "TIMESTAMP"}
+  {"name": "data", "type": "STRING"}
 ]
 EOF
 }
