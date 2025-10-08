@@ -7,16 +7,25 @@ describe('decisionEngine', () => {
   let pubsubStub;
   let topicStub;
   let publishStub;
+  let firestoreStub;
+  let setStub;
 
   beforeEach(() => {
-    // Create stubs for the PubSub client and its methods
+    // Stubs for Pub/Sub
     publishStub = sinon.stub().resolves('mock-message-id');
     topicStub = sinon.stub().returns({ publishMessage: publishStub });
     pubsubStub = sinon.stub().returns({ topic: topicStub });
 
-    // Use proxyquire to inject our mocked PubSub into the function
+    // Stubs for Firestore
+    setStub = sinon.stub().resolves();
+    const docStub = sinon.stub().returns({ set: setStub });
+    const collectionStub = sinon.stub().returns({ doc: docStub });
+    firestoreStub = sinon.stub().returns({ collection: collectionStub });
+
+    // Use proxyquire to inject mocks
     functionToTest = proxyquire('../index', {
       '@google-cloud/pubsub': { PubSub: pubsubStub },
+      '@google-cloud/firestore': { Firestore: firestoreStub },
     });
   });
 
@@ -101,5 +110,48 @@ describe('decisionEngine', () => {
 
     // Check the HTTP response
     expect(res.status.calledOnceWith(400)).to.be.true;
+  });
+
+  it('should save to Firestore and publish a notification for manual review', async () => {
+    const req = {
+      body: {
+        companyName: 'ReviewMe Inc.',
+        industry: 'Testing',
+        region: 'Global',
+        opportunityType: 'Manual Check',
+        summary: 'This analysis requires a human touch.',
+        potentialNeed: ['Eyeballs'],
+        opportunityScore: 8,
+        keyQuote: 'Looks good, but needs a second opinion.',
+        sourceURL: 'https://example.com/review-this',
+        verification: { confidenceScore: 80 }, // Score to trigger manual review
+        internal_qc: { qualityScore: 85 },      // Score to trigger manual review
+      },
+    };
+    const res = {
+      status: sinon.stub().returnsThis(),
+      send: sinon.stub(),
+    };
+
+    await functionToTest.decisionEngine(req, res);
+
+    // 1. Check that it was saved to the Firestore manual review queue
+    expect(firestoreStub.calledOnce).to.be.true;
+    expect(setStub.calledOnce).to.be.true;
+    const savedData = setStub.firstCall.args[0];
+    expect(savedData.decision).to.equal('Manual Review');
+
+    // 2. Check that a notification was published to the correct topic
+    expect(pubsubStub.calledOnce).to.be.true;
+    expect(topicStub.calledOnceWith('review-notifications')).to.be.true;
+    expect(publishStub.calledOnce).to.be.true;
+
+    // 3. Check the content of the notification message
+    const notificationMessage = publishStub.firstCall.args[0].json;
+    expect(notificationMessage.companyName).to.equal('ReviewMe Inc.');
+    expect(notificationMessage.summary).to.equal('This analysis requires a human touch.');
+
+    // 4. Check the HTTP response
+    expect(res.status.calledOnceWith(200)).to.be.true;
   });
 });

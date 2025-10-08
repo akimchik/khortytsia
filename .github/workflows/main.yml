@@ -110,6 +110,8 @@ jobs:
       - name: Deploy Functions and Remaining Infrastructure
         env:
           TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_email_from: ${{ secrets.TF_VAR_email_from }}
+          TF_VAR_email_to: ${{ secrets.TF_VAR_email_to }}
         run: |
           cd pipeline
           terraform apply -auto-approve
