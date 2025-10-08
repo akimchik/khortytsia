@@ -34,6 +34,7 @@ resource "google_project_service" "cloudbuild" {
 resource "google_project_service" "bigquery" {
   project = var.project_id
   service = "bigquery.googleapis.com"
+  disable_dependent_services = true
 }
 
 resource "google_project_service" "firestore" {
@@ -54,11 +55,7 @@ resource "random_string" "bucket_prefix" {
   upper   = false
 }
 
-resource "google_storage_bucket" "terraform_state" {
-  name          = "khortytsia-terraform-state"
-  location      = var.region
-  force_destroy = true
-}
+
 
 resource "google_storage_bucket" "source_bucket" {
   name          = "${var.project_id}-source-code"
