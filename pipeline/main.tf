@@ -435,3 +435,4 @@ resource "google_cloudfunctions_function_iam_member" "submit_correction_invoker_
   role           = "roles/cloudfunctions.invoker"
   member         = "allUsers"
 }
+
