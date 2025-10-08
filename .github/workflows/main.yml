@@ -85,8 +85,15 @@ jobs:
           npm test
           cd ..
 
+      - name: Create GCS Bucket
+        env:
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          cd pipeline
+          terraform init
+          terraform apply -auto-approve -target=google_storage_bucket.source_bucket
+
       - name: Package and Upload Source Code
-        id: package_and_upload
         run: |
           FUNCTIONS=("trigger_ingestion_cycle" "fetch_source_data" "filter_article_content" "core_analysis" "external_verification" "internal_qc" "decision_engine" "delivery_alerter" "get_manual_review" "submit_correction")
           BUCKET_NAME="${{ secrets.GCP_PROJECT_ID }}-source-code"
@@ -100,11 +107,9 @@ jobs:
             gsutil cp "${FUNCTION}.zip" "gs://$BUCKET_NAME/${FUNCTION}.zip"
           done
 
-      - name: Deploy infrastructure
-        needs: package_and_upload
+      - name: Deploy Functions and Remaining Infrastructure
         env:
           TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
         run: |
           cd pipeline
-          terraform init
           terraform apply -auto-approve
