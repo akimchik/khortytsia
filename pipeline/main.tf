@@ -164,7 +164,6 @@ resource "google_pubsub_subscription" "final_analysis_to_bigquery" {
   depends_on = [google_project_iam_member.pubsub_to_bigquery]
 }
 
-
 resource "google_cloudfunctions_function" "trigger_ingestion_cycle" {
   name                  = "trigger_ingestion_cycle"
   runtime               = "nodejs20"
