@@ -15,12 +15,20 @@ variable "schedule" {
   default     = "*/30 * * * *"
 }
 
-variable "email_from" {
+variable "EMAIL_FROM" {
+
   description = "The 'from' address for email notifications (must be your Gmail address)."
+
   type        = string
+
 }
 
-variable "email_to" {
+
+
+variable "EMAIL_TO" {
+
   description = "The recipient address for email notifications."
+
   type        = string
+
 }

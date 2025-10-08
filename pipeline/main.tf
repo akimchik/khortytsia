@@ -304,8 +304,8 @@ resource "google_cloudfunctions_function" "email_notifier" {
     resource   = google_pubsub_topic.review_notifications.name
   }
   environment_variables = {
-    EMAIL_FROM = var.email_from
-    EMAIL_TO   = var.email_to
+    EMAIL_FROM = var.EMAIL_FROM
+    EMAIL_TO   = var.EMAIL_TO
   }
   depends_on = [google_project_service.cloudbuild, google_project_service.gmail]
 }
