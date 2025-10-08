@@ -52,6 +52,23 @@ To protect your `main` branch and ensure all changes are validated, you should e
 4.  Check the box for **Require a pull request before merging**.
 5.  Check the box for **Require status checks to pass before merging**.
 6.  Check the box for **Require branches to be up to date before merging**. This is also a good practice.
+7.  A search box will appear. Type `validate` and select the `validate` check that appears. This is the name of the job in our `pr_check.yml` workflow.
+8.  Click **Create**.
+
+With this rule in place, the "Merge pull request" button will be blocked until all Terraform, unit, and security tests have passed.
+
+### 🛡️ Branch Protection & Pull Requests
+
+To protect your `main` branch and ensure all changes are validated, you should enable a branch protection rule. This will enforce the checks from the `pr_check.yml` workflow on every pull request.
+
+**How to Set Up the Rule:**
+
+1.  In your GitHub repository, go to **Settings** > **Branches**.
+2.  Click **Add branch protection rule**.
+3.  For "Branch name pattern", type `main`.
+4.  Check the box for **Require a pull request before merging**.
+5.  Check the box for **Require status checks to pass before merging**.
+6.  Check the box for **Require branches to be up to date before merging**. This is also a good practice.
 7.  A search box will appear. Type `validate` and select the `validate` check that appears. This is the name of the job in our new `pr_check.yml` workflow.
 8.  Click **Create**.
 
