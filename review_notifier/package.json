@@ -1,0 +1,17 @@
+{
+  "name": "review-notifier",
+  "version": "1.0.0",
+  "description": "A Cloud Function to send email notifications for new manual review items.",
+  "main": "index.js",
+  "dependencies": {
+    "@google-cloud/firestore": "^7.0.0",
+    "@sendgrid/mail": "^8.1.0"
+  },
+  "devDependencies": {
+    "mocha": "^10.2.0",
+    "sino": "^4.0.2"
+  },
+  "scripts": {
+    "test": "mocha"
+  }
+}

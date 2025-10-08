@@ -9,6 +9,10 @@ on:
 jobs:
   test-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      TF_VAR_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      TF_VAR_EMAIL_FROM: ${{ secrets.TF_VAR_EMAIL_FROM }}
+      TF_VAR_EMAIL_TO: ${{ secrets.TF_VAR_EMAIL_TO }}
 
     steps:
       - name: Checkout code
@@ -85,6 +89,34 @@ jobs:
           npm test
           cd ..
 
+      - name: Run tests for decision_engine
+        run: |
+          cd decision_engine
+          npm install
+          npm test
+          cd ..
+
+      - name: Run tests for get_manual_review
+        run: |
+          cd get_manual_review
+          npm install
+          npm test
+          cd ..
+
+      - name: Run tests for submit_correction
+        run: |
+          cd submit_correction
+          npm install
+          npm test
+          cd ..
+
+      - name: Run tests for email_notifier
+        run: |
+          cd email_notifier
+          npm install
+          npm test
+          cd ..
+
       - name: Create GCS Bucket
         env:
           TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
@@ -95,7 +127,7 @@ jobs:
 
       - name: Package and Upload Source Code
         run: |
-          FUNCTIONS=("trigger_ingestion_cycle" "fetch_source_data" "filter_article_content" "core_analysis" "external_verification" "internal_qc" "decision_engine" "delivery_alerter" "get_manual_review" "submit_correction")
+          FUNCTIONS=("trigger_ingestion_cycle" "fetch_source_data" "filter_article_content" "core_analysis" "external_verification" "internal_qc" "decision_engine" "delivery_alerter" "get_manual_review" "submit_correction" "email_notifier")
           BUCKET_NAME="${{ secrets.GCP_PROJECT_ID }}-source-code"
           for FUNCTION in "${FUNCTIONS[@]}"
           do
@@ -108,8 +140,6 @@ jobs:
           done
 
       - name: Deploy Functions and Remaining Infrastructure
-        env:
-          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
         run: |
           cd pipeline
           terraform apply -auto-approve

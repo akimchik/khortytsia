@@ -5,14 +5,14 @@ terraform {
       version = "~> 4.0"
     }
     google-beta = {
-      source = "hashicorp/google-beta"
+      source  = "hashicorp/google-beta"
       version = "~> 4.0"
     }
   }
 
   backend "gcs" {
-    bucket  = "khortytsia-terraform-state"
-    prefix  = "terraform/state"
+    bucket = "khortytsia-terraform-state"
+    prefix = "terraform/state"
   }
 }
 
@@ -32,15 +32,20 @@ resource "google_project_service" "cloudbuild" {
 }
 
 resource "google_project_service" "bigquery" {
-  provider = google-beta
-  project = var.project_id
-  service = "bigquery.googleapis.com"
+  provider                   = google-beta
+  project                    = var.project_id
+  service                    = "bigquery.googleapis.com"
   disable_dependent_services = true
 }
 
 resource "google_project_service" "firestore" {
   project = var.project_id
   service = "firestore.googleapis.com"
+}
+
+resource "google_project_service" "gmail" {
+  project = var.project_id
+  service = "gmail.googleapis.com"
 }
 
 # Get the Pub/Sub service account email
@@ -112,18 +117,22 @@ resource "google_pubsub_topic" "final_leads" {
   name = "final-leads"
 }
 
+resource "google_pubsub_topic" "review_notifications" {
+  name = "review-notifications"
+}
+
 # BigQuery Dataset and Table to store final results
 resource "google_bigquery_dataset" "results_dataset" {
-  dataset_id = "khortytsia_results"
-  description = "Dataset to store results from the Khortytsia pipeline"
-  location = var.region
+  dataset_id                 = "khortytsia_results"
+  description                = "Dataset to store results from the Khortytsia pipeline"
+  location                   = var.region
   delete_contents_on_destroy = true
-  depends_on = [google_project_service.bigquery]
+  depends_on                 = [google_project_service.bigquery]
 }
 
 resource "google_bigquery_table" "approved_leads" {
-  dataset_id = google_bigquery_dataset.results_dataset.dataset_id
-  table_id   = "approved_leads"
+  dataset_id          = google_bigquery_dataset.results_dataset.dataset_id
+  table_id            = "approved_leads"
   deletion_protection = false
 
   schema = <<EOF
@@ -146,24 +155,23 @@ resource "google_pubsub_subscription" "final_analysis_to_bigquery" {
   topic = google_pubsub_topic.final_analysis.name
 
   bigquery_config {
-    table = "${google_bigquery_table.approved_leads.project}:${google_bigquery_table.approved_leads.dataset_id}.${google_bigquery_table.approved_leads.table_id}"
-    use_topic_schema = false
-    write_metadata = false
+    table               = "${google_bigquery_table.approved_leads.project}:${google_bigquery_table.approved_leads.dataset_id}.${google_bigquery_table.approved_leads.table_id}"
+    use_topic_schema    = false
+    write_metadata      = false
     drop_unknown_fields = true
   }
 
   depends_on = [google_project_iam_member.pubsub_to_bigquery]
 }
 
-
 resource "google_cloudfunctions_function" "trigger_ingestion_cycle" {
-  name        = "trigger_ingestion_cycle"
-  runtime     = "nodejs20"
-  entry_point = "triggerIngestionCycle"
+  name                  = "trigger_ingestion_cycle"
+  runtime               = "nodejs20"
+  entry_point           = "triggerIngestionCycle"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "trigger_ingestion_cycle.zip"
-  trigger_http = true
-  depends_on = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
+  trigger_http          = true
+  depends_on            = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
 }
 
 resource "google_cloudfunctions_function_iam_member" "trigger_ingestion_cycle_invoker" {
@@ -187,9 +195,9 @@ resource "google_cloud_scheduler_job" "trigger_ingestion_cycle_scheduler" {
 }
 
 resource "google_cloudfunctions_function" "fetch_source_data" {
-  name        = "fetch_source_data"
-  runtime     = "nodejs20"
-  entry_point = "fetchSourceData"
+  name                  = "fetch_source_data"
+  runtime               = "nodejs20"
+  entry_point           = "fetchSourceData"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "fetch_source_data.zip"
   event_trigger {
@@ -200,9 +208,9 @@ resource "google_cloudfunctions_function" "fetch_source_data" {
 }
 
 resource "google_cloudfunctions_function" "filter_article_content" {
-  name        = "filter_article_content"
-  runtime     = "nodejs20"
-  entry_point = "filterArticleContent"
+  name                  = "filter_article_content"
+  runtime               = "nodejs20"
+  entry_point           = "filterArticleContent"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "filter_article_content.zip"
   event_trigger {
@@ -216,9 +224,9 @@ resource "google_cloudfunctions_function" "filter_article_content" {
 }
 
 resource "google_cloudfunctions_function" "core_analysis" {
-  name        = "core_analysis"
-  runtime     = "nodejs20"
-  entry_point = "coreAnalysis"
+  name                  = "core_analysis"
+  runtime               = "nodejs20"
+  entry_point           = "coreAnalysis"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "core_analysis.zip"
   event_trigger {
@@ -229,9 +237,9 @@ resource "google_cloudfunctions_function" "core_analysis" {
 }
 
 resource "google_cloudfunctions_function" "external_verification" {
-  name        = "external_verification"
-  runtime     = "nodejs20"
-  entry_point = "externalVerification"
+  name                  = "external_verification"
+  runtime               = "nodejs20"
+  entry_point           = "externalVerification"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "external_verification.zip"
   event_trigger {
@@ -242,9 +250,9 @@ resource "google_cloudfunctions_function" "external_verification" {
 }
 
 resource "google_cloudfunctions_function" "internal_qc" {
-  name        = "internal_qc"
-  runtime     = "nodejs20"
-  entry_point = "internalQc"
+  name                  = "internal_qc"
+  runtime               = "nodejs20"
+  entry_point           = "internalQc"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "internal_qc.zip"
   event_trigger {
@@ -255,33 +263,50 @@ resource "google_cloudfunctions_function" "internal_qc" {
 }
 
 resource "google_cloudfunctions_function" "decision_engine" {
-  name        = "decision_engine"
-  runtime     = "nodejs20"
-  entry_point = "decisionEngine"
+  name                  = "decision_engine"
+  runtime               = "nodejs20"
+  entry_point           = "decisionEngine"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "decision_engine.zip"
-  trigger_http = true
-  depends_on = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
+  trigger_http          = true
+  depends_on            = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
 }
 
 resource "google_cloudfunctions_function" "get_manual_review" {
-  name        = "get_manual_review"
-  runtime     = "nodejs20"
-  entry_point = "getManualReview"
+  name                  = "get_manual_review"
+  runtime               = "nodejs20"
+  entry_point           = "getManualReview"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "get_manual_review.zip"
-  trigger_http = true
-  depends_on = [google_project_service.cloudbuild, google_project_service.firestore, google_storage_bucket.source_bucket]
+  trigger_http          = true
+  depends_on            = [google_project_service.cloudbuild, google_project_service.firestore, google_storage_bucket.source_bucket]
 }
 
 resource "google_cloudfunctions_function" "submit_correction" {
-  name        = "submit_correction"
-  runtime     = "nodejs20"
-  entry_point = "submitCorrection"
+  name                  = "submit_correction"
+  runtime               = "nodejs20"
+  entry_point           = "submitCorrection"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "submit_correction.zip"
-  trigger_http = true
-  depends_on = [google_project_service.cloudbuild, google_project_service.firestore, google_storage_bucket.source_bucket]
+  trigger_http          = true
+  depends_on            = [google_project_service.cloudbuild, google_project_service.firestore, google_storage_bucket.source_bucket]
+}
+
+resource "google_cloudfunctions_function" "email_notifier" {
+  name                  = "email_notifier"
+  runtime               = "nodejs20"
+  entry_point           = "emailNotifier"
+  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_object = "email_notifier.zip"
+  event_trigger {
+    event_type = "google.pubsub.topic.publish"
+    resource   = google_pubsub_topic.review_notifications.name
+  }
+  environment_variables = {
+    EMAIL_FROM = var.EMAIL_FROM
+    EMAIL_TO   = var.EMAIL_TO
+  }
+  depends_on = [google_project_service.cloudbuild, google_project_service.gmail]
 }
 
 resource "google_workflows_workflow" "khortytsia_workflow" {
@@ -339,7 +364,7 @@ resource "google_project_iam_member" "internal_qc_pubsub" {
   member  = "serviceAccount:${google_cloudfunctions_function.internal_qc.service_account_email}"
 }
 
-# IAM for decision_engine to publish to final_analysis
+# IAM for decision_engine to publish to final_analysis and review_notifications
 resource "google_project_iam_member" "decision_engine_pubsub" {
   project = var.project_id
   role    = "roles/pubsub.publisher"
@@ -347,9 +372,9 @@ resource "google_project_iam_member" "decision_engine_pubsub" {
 }
 
 resource "google_cloudfunctions_function" "delivery_alerter" {
-  name        = "delivery_alerter"
-  runtime     = "nodejs20"
-  entry_point = "deliverAlert"
+  name                  = "delivery_alerter"
+  runtime               = "nodejs20"
+  entry_point           = "deliverAlert"
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "delivery_alerter.zip"
   event_trigger {
@@ -388,6 +413,13 @@ resource "google_project_iam_member" "submit_correction_firestore" {
   member  = "serviceAccount:${google_cloudfunctions_function.submit_correction.service_account_email}"
 }
 
+# IAM for email_notifier to use the Gmail API
+resource "google_project_iam_member" "email_notifier_gmail" {
+  project = var.project_id
+  role    = "roles/gmail.send"
+  member  = "serviceAccount:${google_cloudfunctions_function.email_notifier.service_account_email}"
+}
+
 resource "google_cloudfunctions_function_iam_member" "get_manual_review_invoker_all_users" {
   project        = google_cloudfunctions_function.get_manual_review.project
   region         = google_cloudfunctions_function.get_manual_review.region
@@ -403,3 +435,4 @@ resource "google_cloudfunctions_function_iam_member" "submit_correction_invoker_
   role           = "roles/cloudfunctions.invoker"
   member         = "allUsers"
 }
+

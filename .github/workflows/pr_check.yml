@@ -44,6 +44,8 @@ jobs:
         id: plan_tf
         env:
           TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_EMAIL_FROM: ${{ secrets.TF_VAR_EMAIL_FROM }}
+          TF_VAR_EMAIL_TO: ${{ secrets.TF_VAR_EMAIL_TO }}
         run: |
           cd pipeline
           terraform plan -no-color

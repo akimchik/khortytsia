@@ -1,164 +1,254 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Khortytsia - Manual Review</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 960px; margin: 20px auto; }
-    .container { width: 95%; margin: 0 auto; }
-    h1 { text-align: center; color: #222; }
-    .analysis { border: 1px solid #ccc; border-radius: 8px; padding: 20px; margin-bottom: 20px; background-color: #f9f9f9; }
-    .form-group { margin-bottom: 15px; }
-    label { display: block; font-weight: bold; margin-bottom: 5px; }
-    input, textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-    textarea { min-height: 100px; }
-    button { background-color: #28a745; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
-    button:hover { background-color: #218838; }
-    #config { background-color: #fffbe6; border: 1px solid #ffe58f; border-radius: 8px; padding: 20px; margin-bottom: 30px; }
-    #config h2 { margin-top: 0; }
+    body { background-color: #f8f9fa; }
+    .card { box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .btn-group .btn { margin-right: 5px; }
+    .form-label { font-weight: 500; }
+    .config-card { background-color: #fff3cd; }
+    .toast-container { z-index: 1090; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Khortytsia - Manual Review Queue</h1>
+  <div class="container py-4">
+    <header class="pb-3 mb-4 border-bottom">
+      <a href="/" class="d-flex align-items-center text-dark text-decoration-none">
+        <span class="fs-4">Khortytsia - Manual Review Queue</span>
+      </a>
+    </header>
 
-    <div id="config">
-      <h2>Configuration</h2>
-      <p>After deploying with Terraform, get the function URLs by running <code>terraform output</code> and paste them here.</p>
-      <div class="form-group">
-        <label for="get_url">get_manual_review Function URL</label>
-        <input type="text" id="get_url" placeholder="Paste URL here">
+    <div class="card p-4 mb-4 config-card" id="config-card">
+      <h2 class="h5">Configuration</h2>
+      <p class="small text-muted">After deploying with Terraform, get the function URLs by running <code>terraform output</code> and paste them here.</p>
+      <div class="row g-3 align-items-end">
+        <div class="col-md">
+          <label for="get_url" class="form-label">Get Manual Review URL</label>
+          <input type="text" class="form-control" id="get_url" placeholder="https://..." onchange="saveConfig()">
+        </div>
+        <div class="col-md">
+          <label for="submit_url" class="form-label">Submit Correction URL</label>
+          <input type="text" class="form-control" id="submit_url" placeholder="https://..." onchange="saveConfig()">
+        </div>
+        <div class="col-md-auto">
+          <button class="btn btn-primary w-100" onclick="getAnalyses()">Load Review Queue</button>
+        </div>
       </div>
-      <div class="form-group">
-        <label for="submit_url">submit_correction Function URL</label>
-        <input type="text" id="submit_url" placeholder="Paste URL here">
-      </div>
-       <button onclick="getAnalyses()">Load Review Queue</button>
     </div>
 
-    <div id="analyses"></div>
+    <div id="loader" class="text-center d-none">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+
+    <div id="analyses-container"></div>
+    
+    <div id="empty-state" class="text-center d-none">
+        <p class="lead">The review queue is empty. Great job!</p>
+    </div>
+
   </div>
 
+  <!-- Toast for notifications -->
+  <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="notificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="toast-header">
+        <strong class="me-auto">Notification</strong>
+        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+      <div class="toast-body"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // --- CONFIGURATION ---
-    // After deploying, run `terraform output` and paste the URLs here.
     const CONFIG = {
         GET_MANUAL_REVIEW_URL: '',
         SUBMIT_CORRECTION_URL: ''
     };
 
-    function updateConfig() {
+    const toastEl = document.getElementById('notificationToast');
+    const toast = new bootstrap.Toast(toastEl);
+
+    function showNotification(message, isError = false) {
+        const toastBody = toastEl.querySelector('.toast-body');
+        toastBody.textContent = message;
+        toastEl.classList.toggle('bg-danger', isError);
+        toastEl.classList.toggle('text-white', isError);
+        toast.show();
+    }
+    
+    function saveConfig() {
+        localStorage.setItem('get_url', document.getElementById('get_url').value);
+        localStorage.setItem('submit_url', document.getElementById('submit_url').value);
+        showNotification('Configuration saved to browser.');
+    }
+
+    function loadConfig() {
+        document.getElementById('get_url').value = localStorage.getItem('get_url') || '';
+        document.getElementById('submit_url').value = localStorage.getItem('submit_url') || '';
         CONFIG.GET_MANUAL_REVIEW_URL = document.getElementById('get_url').value;
         CONFIG.SUBMIT_CORRECTION_URL = document.getElementById('submit_url').value;
     }
 
     async function getAnalyses() {
-      updateConfig();
+      loadConfig();
       if (!CONFIG.GET_MANUAL_REVIEW_URL) {
-        alert('Please configure the get_manual_review Function URL first.');
+        showNotification('Please configure the Get Manual Review URL first.', true);
         return;
       }
 
-      const analysesDiv = document.getElementById('analyses');
-      analysesDiv.innerHTML = 'Loading...';
+      const container = document.getElementById('analyses-container');
+      const loader = document.getElementById('loader');
+      const emptyState = document.getElementById('empty-state');
+      
+      container.innerHTML = '';
+      loader.classList.remove('d-none');
+      emptyState.classList.add('d-none');
 
       try {
         const response = await fetch(CONFIG.GET_MANUAL_REVIEW_URL);
+        if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
         const analyses = await response.json();
-        analysesDiv.innerHTML = '';
+        
+        loader.classList.add('d-none');
 
         if (analyses.length === 0) {
-            analysesDiv.innerHTML = '<p>Review queue is empty. Great job!</p>';
+            emptyState.classList.remove('d-none');
             return;
         }
 
-        for (const analysis of analyses) {
-          const analysisDiv = document.createElement('div');
-          analysisDiv.classList.add('analysis');
-          analysisDiv.innerHTML = `
-            <h2>${analysis.companyName}</h2>
-            <p><strong>Source:</strong> <a href="${analysis.sourceURL}" target="_blank">${analysis.sourceURL}</a></p>
-            <form onsubmit="submitCorrection(event, '${analysis.id}')">
-              <div class="form-group">
-                <label>Company Name</label>
-                <input type="text" name="companyName" value="${analysis.companyName}">
-              </div>
-              <div class="form-group">
-                <label>Industry</label>
-                <input type="text" name="industry" value="${analysis.industry}">
-              </div>
-              <div class="form-group">
-                <label>Region</label>
-                <input type="text" name="region" value="${analysis.region}">
-              </div>
-              <div class="form-group">
-                <label>Opportunity Type</label>
-                <input type="text" name="opportunityType" value="${analysis.opportunityType}">
-              </div>
-              <div class="form-group">
-                <label>Summary</label>
-                <textarea name="summary">${analysis.summary}</textarea>
-              </div>
-              <div class="form-group">
-                <label>Potential Need</label>
-                <textarea name="potentialNeed">${analysis.potentialNeed.join('\n')}</textarea>
-              </div>
-              <div class="form-group">
-                <label>Opportunity Score</label>
-                <input type="number" name="opportunityScore" value="${analysis.opportunityScore}">
-              </div>
-              <div class="form-group">
-                <label>Key Quote</label>
-                <textarea name="keyQuote">${analysis.keyQuote}</textarea>
-              </div>
-              <button type="submit">Submit Correction</button>
-            </form>
-          `;
-          analysesDiv.appendChild(analysisDiv);
-        }
-      } catch (error) {
-        analysesDiv.innerHTML = `<p style="color: red;"><strong>Error:</strong> Could not load review queue. Is the URL correct? (${error.message})</p>`;
-      }
-    }
-
-    async function submitCorrection(event, id) {
-      event.preventDefault();
-      updateConfig();
-      if (!CONFIG.SUBMIT_CORRECTION_URL) {
-        alert('Please configure the submit_correction Function URL first.');
-        return;
-      }
-
-      const form = event.target;
-      const formData = new FormData(form);
-      const correctedAnalysis = {
-        id,
-        companyName: formData.get('companyName'),
-        industry: formData.get('industry'),
-        region: formData.get('region'),
-        opportunityType: formData.get('opportunityType'),
-        summary: formData.get('summary'),
-        potentialNeed: formData.get('potentialNeed').split('\n'),
-        opportunityScore: parseInt(formData.get('opportunityScore')),
-        keyQuote: formData.get('keyQuote'),
-      };
-
-      try {
-        const response = await fetch(CONFIG.SUBMIT_CORRECTION_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(correctedAnalysis),
+        analyses.forEach(analysis => {
+          const card = createAnalysisCard(analysis);
+          container.appendChild(card);
         });
-        if (!response.ok) {
-            throw new Error(`Server responded with status: ${response.status}`);
-        }
-        alert('Correction submitted successfully!');
-        getAnalyses();
       } catch (error) {
-        alert(`Error submitting correction: ${error.message}`);
+        loader.classList.add('d-none');
+        showNotification(`Error loading review queue: ${error.message}`, true);
       }
     }
+
+    function createAnalysisCard(analysis) {
+        const card = document.createElement('div');
+        card.className = 'card mb-4';
+        card.id = `card-${analysis.id}`;
+        
+        const potentialNeedText = Array.isArray(analysis.potentialNeed) ? analysis.potentialNeed.join('\n') : '';
+
+        card.innerHTML = `
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">${analysis.companyName || 'No Company Name'}</h5>
+                <a href="${analysis.sourceURL}" target="_blank" class="btn btn-sm btn-outline-secondary">Source</a>
+            </div>
+            <div class="card-body">
+                <form id="form-${analysis.id}">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Company Name</label>
+                            <input type="text" class="form-control" name="companyName" value="${analysis.companyName || ''}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Industry</label>
+                            <input type="text" class="form-control" name="industry" value="${analysis.industry || ''}">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Region</label>
+                            <input type="text" class="form-control" name="region" value="${analysis.region || ''}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Opportunity Score</label>
+                            <input type="number" class="form-control" name="opportunityScore" value="${analysis.opportunityScore || 0}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Opportunity Type</label>
+                        <input type="text" class="form-control" name="opportunityType" value="${analysis.opportunityType || ''}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Summary</label>
+                        <textarea class="form-control" name="summary" rows="4">${analysis.summary || ''}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Potential Need</label>
+                        <textarea class="form-control" name="potentialNeed" rows="3">${potentialNeedText}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Key Quote</label>
+                        <textarea class="form-control" name="keyQuote" rows="3">${analysis.keyQuote || ''}</textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-end">
+                <div class="btn-group">
+                    <button class="btn btn-success" onclick="handleAction('${analysis.id}', 'approve')">Approve</button>
+                    <button class="btn btn-primary" onclick="handleAction('${analysis.id}', 'update')">Update & Approve</button>
+                    <button class="btn btn-danger" onclick="handleAction('${analysis.id}', 'decline')">Decline</button>
+                </div>
+            </div>
+        `;
+        return card;
+    }
+
+    async function handleAction(id, action) {
+        loadConfig();
+        if (!CONFIG.SUBMIT_CORRECTION_URL) {
+            showNotification('Please configure the Submit Correction URL first.', true);
+            return;
+        }
+
+        let analysisData = { id };
+
+        if (action === 'approve' || action === 'update') {
+            const form = document.getElementById(`form-${id}`);
+            const formData = new FormData(form);
+            
+            for (const [key, value] of formData.entries()) {
+                analysisData[key] = value;
+            }
+            // Handle special cases
+            analysisData.potentialNeed = formData.get('potentialNeed').split('\n').filter(n => n);
+            analysisData.opportunityScore = parseInt(formData.get('opportunityScore'));
+            analysisData.status = 'approved';
+            if (action === 'update') {
+              analysisData.corrected = true;
+            }
+        } else if (action === 'decline') {
+            analysisData.status = 'declined';
+        }
+
+        try {
+            const response = await fetch(CONFIG.SUBMIT_CORRECTION_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(analysisData),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server responded with status: ${response.status}`);
+            }
+            
+            showNotification(`Article ${id} has been ${analysisData.status}.`);
+            document.getElementById(`card-${id}`).remove();
+
+            if (document.getElementById('analyses-container').children.length === 0) {
+                document.getElementById('empty-state').classList.remove('d-none');
+            }
+
+        } catch (error) {
+            showNotification(`Error submitting action: ${error.message}`, true);
+        }
+    }
+    
+    // Load config from localStorage on page load
+    document.addEventListener('DOMContentLoaded', loadConfig);
+
   </script>
 </body>
 </html>
