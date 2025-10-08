@@ -1,6 +1,7 @@
 name: Khortytsia CI/CD
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -28,12 +29,6 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: DEBUG - Verify Project ID Secret
-        run: |
-          echo "Attempting to create a file to verify the secret's content..."
-          touch "PROJECT_ID_IS_${{ secrets.GCP_PROJECT_ID }}"
-          echo "Listing files to reveal the exact secret value used:"
-          ls -l
 
 
       - name: Set up Terraform

@@ -392,10 +392,18 @@ resource "google_project_iam_member" "submit_correction_firestore" {
   member  = "serviceAccount:${google_cloudfunctions_function.submit_correction.service_account_email}"
 }
 
-resource "google_cloudfunctions_function_iam_member" "submit_correction_invoker_akim_linnik" {
+resource "google_cloudfunctions_function_iam_member" "get_manual_review_invoker_all_users" {
+  project        = google_cloudfunctions_function.get_manual_review.project
+  region         = google_cloudfunctions_function.get_manual_review.region
+  cloud_function = google_cloudfunctions_function.get_manual_review.name
+  role           = "roles/cloudfunctions.invoker"
+  member         = "allUsers"
+}
+
+resource "google_cloudfunctions_function_iam_member" "submit_correction_invoker_all_users" {
   project        = google_cloudfunctions_function.submit_correction.project
   region         = google_cloudfunctions_function.submit_correction.region
   cloud_function = google_cloudfunctions_function.submit_correction.name
   role           = "roles/cloudfunctions.invoker"
-  member         = "user:akim.linnik@gmail.com"
+  member         = "allUsers"
 }
