@@ -114,7 +114,6 @@ jobs:
         run: |
           cd email_notifier
           npm install
-          ls -l
           npm test
           cd ..
 
