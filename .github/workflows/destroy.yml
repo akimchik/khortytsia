@@ -37,8 +37,6 @@ jobs:
         run: |
           cd pipeline
           terraform init
-          echo "Removing Terraform state bucket from state management..."
-          terraform state rm google_storage_bucket.terraform_state || echo "State bucket already removed from state or not found. Continuing."
           echo "Starting Terraform destroy..."
           terraform destroy -auto-approve
           echo "Infrastructure destruction complete."
