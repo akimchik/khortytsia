@@ -121,6 +121,7 @@ resource "google_bigquery_dataset" "results_dataset" {
   dataset_id = "khortytsia_results"
   description = "Dataset to store results from the Khortytsia pipeline"
   location = var.region
+  delete_contents_on_destroy = true
   depends_on = [google_project_service.bigquery]
 }
 
