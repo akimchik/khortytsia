@@ -104,5 +104,5 @@ jobs:
           TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
         run: |
           cd pipeline
-          terraform init
+          terraform init -reconfigure
           terraform apply -auto-approve
