@@ -1,7 +1,7 @@
 const assert = require('assert');
 const sinon = require('sinon');
 const { google } = require('googleapis');
-const { emailNotifier } = require('../index.js');
+const { emailNotifier } = require('./index.js');
 
 describe('emailNotifier', () => {
   let gmailSendStub;
