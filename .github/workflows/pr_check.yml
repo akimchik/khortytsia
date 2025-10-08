@@ -53,7 +53,7 @@ jobs:
       - name: Run Unit & Security Tests for All Modules
         id: run_tests
         run: |
-          FUNCTIONS=("trigger_ingestion_cycle" "fetch_source_data" "filter_article_content" "core_analysis" "external_verification" "internal_qc" "decision_engine" "delivery_alerter" "get_manual_review" "submit_correction")
+          FUNCTIONS=("trigger_ingestion_cycle" "fetch_source_data" "filter_article_content" "core_analysis" "external_verification" "internal_qc" "decision_engine" "delivery_alerter" "get_manual_review" "submit_correction" "email_notifier")
           for FUNCTION in "${FUNCTIONS[@]}"
           do
             echo "--- Validating module: $FUNCTION ---"
