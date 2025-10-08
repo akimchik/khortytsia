@@ -32,6 +32,7 @@ resource "google_project_service" "cloudbuild" {
 }
 
 resource "google_project_service" "bigquery" {
+  provider = google-beta
   project = var.project_id
   service = "bigquery.googleapis.com"
   disable_dependent_services = true
@@ -54,8 +55,6 @@ resource "random_string" "bucket_prefix" {
   special = false
   upper   = false
 }
-
-
 
 resource "google_storage_bucket" "source_bucket" {
   name          = "${var.project_id}-source-code"
