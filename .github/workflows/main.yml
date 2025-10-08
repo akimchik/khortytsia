@@ -1,10 +1,10 @@
 name: Khortytsia CI/CD
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
-      - dev-debug
 
 jobs:
   test-and-deploy:
