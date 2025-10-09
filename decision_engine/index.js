@@ -12,7 +12,6 @@ const pubsub = new PubSub();
 const firestore = new Firestore();
 const finalAnalysisTopic = 'final-analysis';
 const manualReviewCollection = 'manual-review-queue';
-const reviewNotificationsTopic = 'review-notifications';
 const reviewNotificationTopic = 'review-notifications';
 
 const enrichedAnalysisSchema = Joi.object({
@@ -66,15 +65,15 @@ exports.decisionEngine = async (req, res) => {
       await docRef.set(finalAnalysis);
       console.log(`Saved analysis for ${analysis.companyName} to manual review queue.`);
 
-      // Also publish a notification to trigger the emailer
-      const notificationMessage = { 
-        json: { 
-          companyName: analysis.companyName, 
-          summary: analysis.summary 
-        } 
+      // Write a structured log for the alerting policy to detect.
+      const logEntry = {
+        severity: 'INFO',
+        message: `Manual review required for ${analysis.companyName}`,
+        company: analysis.companyName,
+        summary: analysis.summary,
+        review_required: true // A specific field for the filter
       };
-      await pubsub.topic(reviewNotificationsTopic).publishMessage(notificationMessage);
-      console.log(`Published notification for ${analysis.companyName} to ${reviewNotificationsTopic}.`);
+      console.log(JSON.stringify(logEntry));
 
       res.status(200).send(`Analysis for ${analysis.companyName} requires manual review.`);
     } else {
