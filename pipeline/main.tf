@@ -17,41 +17,41 @@ terraform {
 }
 
 provider "google" {
-  project = var.GCP_PROJECT_ID
+  project = var.project_id
   region  = var.region
 }
 
 provider "google-beta" {
-  project = var.GCP_PROJECT_ID
+  project = var.project_id
   region  = var.region
 }
 
 resource "google_project_service" "cloudbuild" {
-  project = var.GCP_PROJECT_ID
+  project = var.project_id
   service = "cloudbuild.googleapis.com"
 }
 
 resource "google_project_service" "bigquery" {
   provider                   = google-beta
-  project                    = var.GCP_PROJECT_ID
+  project                    = var.project_id
   service                    = "bigquery.googleapis.com"
   disable_dependent_services = true
 }
 
 resource "google_project_service" "firestore" {
-  project = var.GCP_PROJECT_ID
+  project = var.project_id
   service = "firestore.googleapis.com"
 }
 
 resource "google_project_service" "gmail" {
-  project = var.GCP_PROJECT_ID
+  project = var.project_id
   service = "gmail.googleapis.com"
 }
 
 # Get the Pub/Sub service account email
 resource "google_project_service_identity" "pubsub" {
   provider = google-beta
-  project  = var.GCP_PROJECT_ID
+  project  = var.project_id
   service  = "pubsub.googleapis.com"
 }
 
@@ -62,13 +62,13 @@ resource "random_string" "bucket_prefix" {
 }
 
 resource "google_storage_bucket" "source_bucket" {
-  name          = "${var.GCP_PROJECT_ID}-source-code"
+  name          = "${var.project_id}-source-code"
   location      = var.region
   force_destroy = true
 }
 
 resource "google_storage_bucket" "keywords_bucket" {
-  name          = "${var.GCP_PROJECT_ID}-keywords-${random_string.bucket_prefix.result}"
+  name          = "${var.project_id}-keywords-${random_string.bucket_prefix.result}"
   location      = var.region
   force_destroy = true
 }
@@ -117,6 +117,9 @@ resource "google_pubsub_topic" "final_leads" {
   name = "final-leads"
 }
 
+resource "google_pubsub_topic" "review_notifications" {
+  name = "review-notifications"
+}
 
 # BigQuery Dataset and Table to store final results
 resource "google_bigquery_dataset" "results_dataset" {
@@ -141,7 +144,7 @@ EOF
 
 # Grant the Pub/Sub service account permission to write to the BigQuery table
 resource "google_project_iam_member" "pubsub_to_bigquery" {
-  project = var.GCP_PROJECT_ID
+  project = var.project_id
   role    = "roles/bigquery.dataEditor"
   member  = "serviceAccount:${google_project_service_identity.pubsub.email}"
 }
@@ -289,7 +292,133 @@ resource "google_cloudfunctions_function" "submit_correction" {
   depends_on            = [google_project_service.cloudbuild, google_project_service.firestore, google_storage_bucket.source_bucket]
 }
 
+resource "google_cloudfunctions_function" "email_notifier" {
+  name                  = "email_notifier"
+  runtime               = "nodejs20"
+  entry_point           = "emailNotifier"
+  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_object = "email_notifier.zip"
+  event_trigger {
+    event_type = "google.pubsub.topic.publish"
+    resource   = google_pubsub_topic.review_notifications.name
+  }
+  environment_variables = {
+    EMAIL_FROM = var.EMAIL_FROM
+    EMAIL_TO   = var.EMAIL_TO
+  }
+  depends_on = [google_project_service.cloudbuild, google_project_service.gmail]
+}
 
+resource "google_workflows_workflow" "khortytsia_workflow" {
+  name            = "khortytsia-workflow"
+  region          = var.region
+  source_contents = file("../workflow.yaml")
+}
+
+# IAM for trigger_ingestion_cycle to publish to source-to-fetch
+resource "google_project_iam_member" "trigger_ingestion_cycle_pubsub" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_cloudfunctions_function.trigger_ingestion_cycle.service_account_email}"
+}
+
+# IAM for fetch_source_data to publish to article-to-filter
+resource "google_project_iam_member" "fetch_source_data_pubsub" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_cloudfunctions_function.fetch_source_data.service_account_email}"
+}
+
+# IAM for filter_article_content to publish to article-to-analyze
+resource "google_project_iam_member" "filter_article_content_pubsub" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_cloudfunctions_function.filter_article_content.service_account_email}"
+}
+
+# IAM for core_analysis to invoke the workflow
+resource "google_project_iam_member" "core_analysis_workflow_invoker" {
+  project = var.project_id
+  role    = "roles/workflows.invoker"
+  member  = "serviceAccount:${google_cloudfunctions_function.core_analysis.service_account_email}"
+}
+
+# IAM for core_analysis to use Vertex AI
+resource "google_project_iam_member" "core_analysis_vertexai" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_cloudfunctions_function.core_analysis.service_account_email}"
+}
+
+# IAM for external_verification to publish to decision-engine-queue
+resource "google_project_iam_member" "external_verification_pubsub" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_cloudfunctions_function.external_verification.service_account_email}"
+}
+
+# IAM for internal_qc to publish to decision-engine-queue
+resource "google_project_iam_member" "internal_qc_pubsub" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_cloudfunctions_function.internal_qc.service_account_email}"
+}
+
+# IAM for decision_engine to publish to final_analysis and review_notifications
+resource "google_project_iam_member" "decision_engine_pubsub" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"
+}
+
+resource "google_cloudfunctions_function" "delivery_alerter" {
+  name                  = "delivery_alerter"
+  runtime               = "nodejs20"
+  entry_point           = "deliverAlert"
+  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_object = "delivery_alerter.zip"
+  event_trigger {
+    event_type = "google.pubsub.topic.publish"
+    resource   = google_pubsub_topic.final_leads.name
+  }
+  environment_variables = {
+    WEBHOOK_URL = "YOUR_WEBHOOK_URL_HERE"
+  }
+  depends_on = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
+}
+
+# IAM for decision_engine to publish to final-leads
+resource "google_project_iam_member" "decision_engine_final_leads_pubsub" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"
+}
+
+# IAM for functions to access Firestore
+resource "google_project_iam_member" "decision_engine_firestore" {
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"
+}
+
+resource "google_project_iam_member" "get_manual_review_firestore" {
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${google_cloudfunctions_function.get_manual_review.service_account_email}"
+}
+
+resource "google_project_iam_member" "submit_correction_firestore" {
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${google_cloudfunctions_function.submit_correction.service_account_email}"
+}
+
+# IAM for email_notifier to use the Gmail API
+resource "google_project_iam_member" "email_notifier_gmail" {
+  project = var.project_id
+  role    = "roles/gmail.send"
+  member  = "serviceAccount:${google_cloudfunctions_function.email_notifier.service_account_email}"
+}
 
 resource "google_cloudfunctions_function_iam_member" "get_manual_review_invoker_all_users" {
   project        = google_cloudfunctions_function.get_manual_review.project
@@ -307,46 +436,3 @@ resource "google_cloudfunctions_function_iam_member" "submit_correction_invoker_
   member         = "allUsers"
 }
 
-# --- Alerting for Manual Review ---
-
-# 1. Notification Channel to send the alert email
-resource "google_monitoring_notification_channel" "email_channel" {
-  display_name = "Email Akim Linnik"
-  type         = "email"
-  labels = {
-    email_address = var.EMAIL_TO
-  }
-}
-
-# 2. A custom log-based metric to count manual review events
-resource "google_logging_metric" "manual_review_metric" {
-  name   = "manual_review_required_metric"
-  filter = "resource.type=\"cloud_function\" AND jsonPayload.review_required=true"
-  metric_descriptor {
-    metric_kind = "DELTA"
-    value_type  = "INT64"
-  }
-}
-
-# 3. The alert policy that triggers on the metric
-resource "google_monitoring_alert_policy" "manual_review_alert" {
-  display_name = "Alert for Manual Review Items"
-  combiner     = "OR"
-  notification_channels = [google_monitoring_notification_channel.email_channel.name]
-
-  conditions {
-    display_name = "Manual Review Required"
-    condition_threshold {
-      filter     = "metric.type=\"logging.googleapis.com/user/${google_logging_metric.manual_review_metric.name}\" AND resource.type=\"cloud_function\""
-      duration   = "60s"
-      comparison = "COMPARISON_GT"
-      trigger {
-        count = 1
-      }
-      aggregations {
-        alignment_period   = "60s"
-        per_series_aligner = "ALIGN_COUNT"
-      }
-    }
-  }
-}
