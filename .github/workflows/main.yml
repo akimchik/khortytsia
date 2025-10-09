@@ -117,13 +117,14 @@ jobs:
           npm test
           cd ..
 
-      - name: Create GCS Bucket
-        env:
-          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
-        run: |
-          cd pipeline
-          terraform init
-          terraform apply -auto-approve -target=google_storage_bucket.source_bucket
+      - name: Terraform Init
+        run: terraform init -reconfigure -input=false
+        working-directory: ./pipeline
+
+      - name: Create Source Bucket
+        id: create_bucket
+        run: terraform apply -target=google_storage_bucket.source_bucket -auto-approve -input=false
+        working-directory: ./pipeline
 
       - name: Terraform Init
         run: terraform init
@@ -151,4 +152,4 @@ jobs:
       - name: Deploy Functions and Remaining Infrastructure
         run: |
           cd pipeline
-          terraform apply -auto-approve
+          terraform apply -auto-approve -input=false
