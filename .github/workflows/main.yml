@@ -110,24 +110,19 @@ jobs:
           npm test
           cd ..
 
-      - name: Run tests for email_notifier
-        run: |
-          cd email_notifier
-          npm install
-          npm test
-          cd ..
 
-      - name: Create GCS Bucket
-        env:
-          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
-        run: |
-          cd pipeline
-          terraform init
-          terraform apply -auto-approve -target=google_storage_bucket.source_bucket
+      - name: Terraform Init
+        run: terraform init -reconfigure -input=false
+        working-directory: ./pipeline
+
+      - name: Create Source Bucket
+        id: create_bucket
+        run: terraform apply -target=google_storage_bucket.source_bucket -auto-approve -input=false
+        working-directory: ./pipeline
 
       - name: Package and Upload Source Code
         run: |
-          FUNCTIONS=("trigger_ingestion_cycle" "fetch_source_data" "filter_article_content" "core_analysis" "external_verification" "internal_qc" "decision_engine" "delivery_alerter" "get_manual_review" "submit_correction" "email_notifier")
+          FUNCTIONS=("trigger_ingestion_cycle" "fetch_source_data" "filter_article_content" "core_analysis" "external_verification" "internal_qc" "decision_engine" "delivery_alerter" "get_manual_review" "submit_correction")
           BUCKET_NAME="${{ secrets.GCP_PROJECT_ID }}-source-code"
           for FUNCTION in "${FUNCTIONS[@]}"
           do
@@ -142,4 +137,4 @@ jobs:
       - name: Deploy Functions and Remaining Infrastructure
         run: |
           cd pipeline
-          terraform apply -auto-approve
+          terraform apply -auto-approve -input=false
