@@ -33,6 +33,9 @@ jobs:
         with:
           terraform_version: 1.2.5
 
+      - name: Remove Terraform lock file
+        run: gsutil rm gs://khortytsia-terraform-state/terraform/state/default.tflock || true
+
       - name: Validate Terraform
         id: validate_tf
         run: |
@@ -48,7 +51,7 @@ jobs:
           TF_VAR_EMAIL_TO: ${{ secrets.TF_VAR_EMAIL_TO }}
         run: |
           cd pipeline
-          terraform plan -no-color
+          terraform plan -no-color -lock-timeout=300s
 
       - name: Run Unit & Security Tests for All Modules
         id: run_tests
