@@ -8,6 +8,10 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    env:
+      TF_VAR_GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      TF_VAR_EMAIL_FROM: ${{ secrets.TF_VAR_EMAIL_FROM }}
+      TF_VAR_EMAIL_TO: ${{ secrets.TF_VAR_EMAIL_TO }}
 
     steps:
       - name: Checkout code
@@ -38,30 +42,13 @@ jobs:
         run: |
           cd pipeline
           terraform init
-          terraform validate
+          terraform validate -no-color
 
       - name: Terraform Plan
         id: plan_tf
-        env:
-          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
-          TF_VAR_EMAIL_FROM: ${{ secrets.TF_VAR_EMAIL_FROM }}
-          TF_VAR_EMAIL_TO: ${{ secrets.TF_VAR_EMAIL_TO }}
         run: |
           cd pipeline
           terraform plan -no-color
 
-      - name: Run Unit & Security Tests for All Modules
-        id: run_tests
-        run: |
-          FUNCTIONS=("trigger_ingestion_cycle" "fetch_source_data" "filter_article_content" "core_analysis" "external_verification" "internal_qc" "decision_engine" "delivery_alerter" "get_manual_review" "submit_correction" "email_notifier")
-          for FUNCTION in "${FUNCTIONS[@]}"
-          do
-            echo "--- Validating module: $FUNCTION ---"
-            cd $FUNCTION
-            npm install
-            npm test
-            npm audit
-            cd ..
-            echo "--- Finished $FUNCTION ---"
-            echo ""
-          done
+      - name: Run All Unit & Security Tests
+        uses: ./.github/actions/run-all-tests

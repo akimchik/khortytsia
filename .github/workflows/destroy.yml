@@ -33,7 +33,7 @@ jobs:
         id: destroy
         # Pass the project_id to Terraform as an environment variable
         env:
-          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: |
           cd pipeline
           terraform init
