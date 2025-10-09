@@ -17,41 +17,41 @@ terraform {
 }
 
 provider "google" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   region  = var.region
 }
 
 provider "google-beta" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   region  = var.region
 }
 
 resource "google_project_service" "cloudbuild" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   service = "cloudbuild.googleapis.com"
 }
 
 resource "google_project_service" "bigquery" {
   provider                   = google-beta
-  project                    = var.project_id
+  project                    = var.GCP_PROJECT_ID
   service                    = "bigquery.googleapis.com"
   disable_dependent_services = true
 }
 
 resource "google_project_service" "firestore" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   service = "firestore.googleapis.com"
 }
 
 resource "google_project_service" "gmail" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   service = "gmail.googleapis.com"
 }
 
 # Get the Pub/Sub service account email
 resource "google_project_service_identity" "pubsub" {
   provider = google-beta
-  project  = var.project_id
+  project  = var.GCP_PROJECT_ID
   service  = "pubsub.googleapis.com"
 }
 
@@ -62,13 +62,13 @@ resource "random_string" "bucket_prefix" {
 }
 
 resource "google_storage_bucket" "source_bucket" {
-  name          = "${var.project_id}-source-code"
+  name          = "${var.GCP_PROJECT_ID}-source-code"
   location      = var.region
   force_destroy = true
 }
 
 resource "google_storage_bucket" "keywords_bucket" {
-  name          = "${var.project_id}-keywords-${random_string.bucket_prefix.result}"
+  name          = "${var.GCP_PROJECT_ID}-keywords-${random_string.bucket_prefix.result}"
   location      = var.region
   force_destroy = true
 }
@@ -144,7 +144,7 @@ EOF
 
 # Grant the Pub/Sub service account permission to write to the BigQuery table
 resource "google_project_iam_member" "pubsub_to_bigquery" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   role    = "roles/bigquery.dataEditor"
   member  = "serviceAccount:${google_project_service_identity.pubsub.email}"
 }
@@ -317,56 +317,56 @@ resource "google_workflows_workflow" "khortytsia_workflow" {
 
 # IAM for trigger_ingestion_cycle to publish to source-to-fetch
 resource "google_project_iam_member" "trigger_ingestion_cycle_pubsub" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:${google_cloudfunctions_function.trigger_ingestion_cycle.service_account_email}"
 }
 
 # IAM for fetch_source_data to publish to article-to-filter
 resource "google_project_iam_member" "fetch_source_data_pubsub" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:${google_cloudfunctions_function.fetch_source_data.service_account_email}"
 }
 
 # IAM for filter_article_content to publish to article-to-analyze
 resource "google_project_iam_member" "filter_article_content_pubsub" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:${google_cloudfunctions_function.filter_article_content.service_account_email}"
 }
 
 # IAM for core_analysis to invoke the workflow
 resource "google_project_iam_member" "core_analysis_workflow_invoker" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   role    = "roles/workflows.invoker"
   member  = "serviceAccount:${google_cloudfunctions_function.core_analysis.service_account_email}"
 }
 
 # IAM for core_analysis to use Vertex AI
 resource "google_project_iam_member" "core_analysis_vertexai" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   role    = "roles/aiplatform.user"
   member  = "serviceAccount:${google_cloudfunctions_function.core_analysis.service_account_email}"
 }
 
 # IAM for external_verification to publish to decision-engine-queue
 resource "google_project_iam_member" "external_verification_pubsub" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:${google_cloudfunctions_function.external_verification.service_account_email}"
 }
 
 # IAM for internal_qc to publish to decision-engine-queue
 resource "google_project_iam_member" "internal_qc_pubsub" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:${google_cloudfunctions_function.internal_qc.service_account_email}"
 }
 
 # IAM for decision_engine to publish to final_analysis and review_notifications
 resource "google_project_iam_member" "decision_engine_pubsub" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"
 }
@@ -389,33 +389,33 @@ resource "google_cloudfunctions_function" "delivery_alerter" {
 
 # IAM for decision_engine to publish to final-leads
 resource "google_project_iam_member" "decision_engine_final_leads_pubsub" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"
 }
 
 # IAM for functions to access Firestore
 resource "google_project_iam_member" "decision_engine_firestore" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   role    = "roles/datastore.user"
   member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"
 }
 
 resource "google_project_iam_member" "get_manual_review_firestore" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   role    = "roles/datastore.user"
   member  = "serviceAccount:${google_cloudfunctions_function.get_manual_review.service_account_email}"
 }
 
 resource "google_project_iam_member" "submit_correction_firestore" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   role    = "roles/datastore.user"
   member  = "serviceAccount:${google_cloudfunctions_function.submit_correction.service_account_email}"
 }
 
 # IAM for email_notifier to use the Gmail API
 resource "google_project_iam_member" "email_notifier_gmail" {
-  project = var.project_id
+  project = var.GCP_PROJECT_ID
   role    = "roles/gmail.send"
   member  = "serviceAccount:${google_cloudfunctions_function.email_notifier.service_account_email}"
 }
@@ -435,4 +435,3 @@ resource "google_cloudfunctions_function_iam_member" "submit_correction_invoker_
   role           = "roles/cloudfunctions.invoker"
   member         = "allUsers"
 }
-
