@@ -110,12 +110,6 @@ jobs:
           npm test
           cd ..
 
-      - name: Run tests for email_notifier
-        run: |
-          cd email_notifier
-          npm install
-          npm test
-          cd ..
 
       - name: Terraform Init
         run: terraform init -reconfigure -input=false
@@ -128,7 +122,7 @@ jobs:
 
       - name: Package and Upload Source Code
         run: |
-          FUNCTIONS=("trigger_ingestion_cycle" "fetch_source_data" "filter_article_content" "core_analysis" "external_verification" "internal_qc" "decision_engine" "delivery_alerter" "get_manual_review" "submit_correction" "email_notifier")
+          FUNCTIONS=("trigger_ingestion_cycle" "fetch_source_data" "filter_article_content" "core_analysis" "external_verification" "internal_qc" "decision_engine" "delivery_alerter" "get_manual_review" "submit_correction")
           BUCKET_NAME="${{ secrets.GCP_PROJECT_ID }}-source-code"
           for FUNCTION in "${FUNCTIONS[@]}"
           do
