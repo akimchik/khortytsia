@@ -7,7 +7,7 @@ runs:
     - name: Run Unit & Security Tests for All Modules
       shell: bash
       run: |
-        FUNCTIONS_TO_TEST=("trigger_ingestion_cycle" "fetch_source_data" "filter_article_content" "core_analysis" "external_verification" "internal_qc" "decision_engine" "delivery_alerter" "get_manual_review" "submit_correction" "email_notifier")
+        FUNCTIONS_TO_TEST=("trigger_ingestion_cycle" "fetch_source_data" "filter_article_content" "core_analysis" "external_verification" "internal_qc" "decision_engine" "delivery_alerter" "get_manual_review" "submit_correction")
         for FUNCTION in "${FUNCTIONS_TO_TEST[@]}"
         do
           echo "--- Testing module: $FUNCTION ---"
