@@ -34,6 +34,8 @@ jobs:
         # Pass the project_id to Terraform as an environment variable
         env:
           TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          EMAIL_FROM: ${{ secrets.TF_VAR_EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.TF_VAR_EMAIL_TO }}
         run: |
           cd pipeline
           terraform init

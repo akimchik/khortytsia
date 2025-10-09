@@ -11,9 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TF_VAR_GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-      TF_VAR_EMAIL_FROM: ${{ secrets.TF_VAR_EMAIL_FROM }}
-      TF_VAR_EMAIL_TO: ${{ secrets.TF_VAR_EMAIL_TO }}
-
+      EMAIL_FROM: ${{ secrets.TF_VAR_EMAIL_FROM }}
+      EMAIL_TO: ${{ secrets.TF_VAR_EMAIL_TO }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
