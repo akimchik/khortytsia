@@ -133,8 +133,6 @@ describe('decisionEngine', () => {
       send: sinon.stub(),
     };
 
-    const logSpy = sinon.spy(console, 'log');
-
     await functionToTest.decisionEngine(req, res);
 
     // 1. Check that it was saved to the Firestore manual review queue
@@ -143,18 +141,17 @@ describe('decisionEngine', () => {
     const savedData = setStub.firstCall.args[0];
     expect(savedData.decision).to.equal('Manual Review');
 
-    // 2. Check that a structured log was written for the notification
-    const expectedLog = JSON.stringify({
-      severity: 'INFO',
-      message: `Manual review required for ${req.body.companyName}`,
-      company: req.body.companyName,
-      summary: req.body.summary,
-      review_required: true
-    });
-    expect(logSpy.calledWith(expectedLog)).to.be.true;
-    logSpy.restore();
+    // 2. Check that a notification was published to the correct topic
+    expect(pubsubStub.calledOnce).to.be.true;
+    expect(topicStub.calledOnceWith('review-notifications')).to.be.true;
+    expect(publishStub.calledOnce).to.be.true;
 
-    // 3. Check the HTTP response
+    // 3. Check the content of the notification message
+    const notificationMessage = publishStub.firstCall.args[0].json;
+    expect(notificationMessage.companyName).to.equal('ReviewMe Inc.');
+    expect(notificationMessage.summary).to.equal('This analysis requires a human touch.');
+
+    // 4. Check the HTTP response
     expect(res.status.calledOnceWith(200)).to.be.true;
   });
 });

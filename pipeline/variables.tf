@@ -1,4 +1,4 @@
-variable "GCP_PROJECT_ID" {
+variable "project_id" {
   description = "The GCP project ID."
   type        = string
 }
@@ -16,11 +16,19 @@ variable "schedule" {
 }
 
 variable "EMAIL_FROM" {
+
   description = "The 'from' address for email notifications (must be your Gmail address)."
+
   type        = string
+
 }
 
+
+
 variable "EMAIL_TO" {
+
   description = "The recipient address for email notifications."
+
   type        = string
+
 }
