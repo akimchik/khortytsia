@@ -36,7 +36,9 @@ describe('triggerIngestionCycle', () => {
     expect(res.status.calledWith(200)).to.be.true;
     expect(res.send.calledWith('Ingestion cycle triggered successfully.')).to.be.true;
 
+const dataSources = require('../data-sources.json');
+
     // Check that a message was published for each data source
-    expect(publishMessageMock.callCount).to.equal(14); // 14 data sources in the mock
+    expect(publishMessageMock.callCount).to.equal(dataSources.length);
   });
 });
