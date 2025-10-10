@@ -1,0 +1,22 @@
+name: 'Run All Unit & Security Tests'
+description: 'Installs dependencies and runs tests for all Node.js modules.'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run Unit & Security Tests for All Modules
+      id: run_tests
+      shell: bash
+      run: |
+        for dir in */; do
+          if [ -f "$dir/package.json" ]; then
+            echo "--- Validating module: $dir ---"
+            cd "$dir"
+            npm install
+            npm test
+            npm audit
+            cd ..
+            echo "--- Finished $dir ---"
+            echo ""
+          fi
+        done
