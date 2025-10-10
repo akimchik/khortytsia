@@ -117,9 +117,7 @@ resource "google_pubsub_topic" "final_leads" {
   name = "final-leads"
 }
 
-resource "google_pubsub_topic" "review_notifications" {
-  name = "review-notifications"
-}
+
 
 # BigQuery Dataset and Table to store final results
 resource "google_bigquery_dataset" "results_dataset" {
@@ -292,22 +290,7 @@ resource "google_cloudfunctions_function" "submit_correction" {
   depends_on            = [google_project_service.cloudbuild, google_project_service.firestore, google_storage_bucket.source_bucket]
 }
 
-resource "google_cloudfunctions_function" "email_notifier" {
-  name                  = "email_notifier"
-  runtime               = "nodejs20"
-  entry_point           = "emailNotifier"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
-  source_archive_object = "email_notifier.zip"
-  event_trigger {
-    event_type = "google.pubsub.topic.publish"
-    resource   = google_pubsub_topic.review_notifications.name
-  }
-  environment_variables = {
-    EMAIL_FROM = var.EMAIL_FROM
-    EMAIL_TO   = var.EMAIL_TO
-  }
-  depends_on = [google_project_service.cloudbuild, google_project_service.gmail]
-}
+
 
 resource "google_workflows_workflow" "khortytsia_workflow" {
   name            = "khortytsia-workflow"
@@ -413,12 +396,7 @@ resource "google_project_iam_member" "submit_correction_firestore" {
   member  = "serviceAccount:${google_cloudfunctions_function.submit_correction.service_account_email}"
 }
 
-# IAM for email_notifier to use the Gmail API
-resource "google_project_iam_member" "email_notifier_gmail" {
-  project = var.GCP_PROJECT_ID
-  role    = "roles/gmail.send"
-  member  = "serviceAccount:${google_cloudfunctions_function.email_notifier.service_account_email}"
-}
+
 
 resource "google_cloudfunctions_function_iam_member" "get_manual_review_invoker_all_users" {
   project        = google_cloudfunctions_function.get_manual_review.project
@@ -434,4 +412,48 @@ resource "google_cloudfunctions_function_iam_member" "submit_correction_invoker_
   cloud_function = google_cloudfunctions_function.submit_correction.name
   role           = "roles/cloudfunctions.invoker"
   member         = "allUsers"
+}
+
+# --- Alerting for Manual Review ---
+
+# 1. Notification Channel to send the alert email
+resource "google_monitoring_notification_channel" "email_channel" {
+  display_name = "Email Akim Linnik"
+  type         = "email"
+  labels = {
+    email_address = var.EMAIL_TO
+  }
+}
+
+# 2. A custom log-based metric to count manual review events
+resource "google_logging_metric" "manual_review_metric" {
+  name   = "manual_review_required_metric"
+  filter = "resource.type=\"cloud_function\" AND jsonPayload.review_required=true"
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+}
+
+# 3. The alert policy that triggers on the metric
+resource "google_monitoring_alert_policy" "manual_review_alert" {
+  display_name = "Alert for Manual Review Items"
+  combiner     = "OR"
+  notification_channels = [google_monitoring_notification_channel.email_channel.name]
+
+  conditions {
+    display_name = "Manual Review Required"
+    condition_threshold {
+      filter     = "metric.type=\"logging.googleapis.com/user/${google_logging_metric.manual_review_metric.name}\" AND resource.type=\"cloud_function\""
+      duration   = "60s"
+      comparison = "COMPARISON_GT"
+      trigger {
+        count = 1
+      }
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_COUNT"
+      }
+    }
+  }
 }

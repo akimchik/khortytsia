@@ -31,12 +31,13 @@ jobs:
 
       - name: Terraform Destroy
         id: destroy
-        # Pass the project_id to Terraform as an environment variable
         env:
-          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_EMAIL_FROM: ${{ secrets.TF_VAR_EMAIL_FROM }}
+          TF_VAR_EMAIL_TO: ${{ secrets.TF_VAR_EMAIL_TO }}
         run: |
           cd pipeline
-          terraform init
+          terraform init -reconfigure
           echo "Starting Terraform destroy..."
           terraform destroy -auto-approve
           echo "Infrastructure destruction complete."
