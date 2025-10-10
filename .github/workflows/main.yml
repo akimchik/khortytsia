@@ -53,18 +53,34 @@ jobs:
         run: terraform apply -target=google_storage_bucket.source_bucket -auto-approve -input=false
         working-directory: ./pipeline
 
-      - name: Package and Upload Source Code
+      - name: Detect Changed Functions
+        id: changed-functions
         run: |
-          FUNCTIONS=("trigger_ingestion_cycle" "fetch_source_data" "filter_article_content" "core_analysis" "external_verification" "internal_qc" "decision_engine" "delivery_alerter" "get_manual_review" "submit_correction")
+          CHANGED_FUNCTIONS=""
+          for dir in */; do
+            if [ -f "$dir/package.json" ]; then
+              # Check for changes in the function directory compared to the last commit on main
+              if git diff --quiet HEAD^ HEAD -- "$dir"; then
+                echo "No changes in $dir"
+              else
+                echo "Changes detected in $dir"
+                CHANGED_FUNCTIONS="$CHANGED_FUNCTIONS $dir"
+              fi
+            fi
+          done
+          echo "::set-output name=functions::$CHANGED_FUNCTIONS"
+
+      - name: Package and Upload Source Code
+        if: steps.changed-functions.outputs.functions != ''
+        run: |
           BUCKET_NAME="${{ secrets.GCP_PROJECT_ID }}-source-code"
-          for FUNCTION in "${FUNCTIONS[@]}"
-          do
+          for FUNCTION in ${{ steps.changed-functions.outputs.functions }}; do
             echo "Packaging $FUNCTION..."
-            cd $FUNCTION
-            zip -r "../${FUNCTION}.zip" .
+            cd "$FUNCTION"
+            zip -r "../${FUNCTION%/}.zip" .
             cd ..
-            echo "Uploading ${FUNCTION}.zip to gs://$BUCKET_NAME/"
-            gsutil cp "${FUNCTION}.zip" "gs://$BUCKET_NAME/${FUNCTION}.zip"
+            echo "Uploading ${FUNCTION%/}.zip to gs://$BUCKET_NAME/"
+            gsutil cp "${FUNCTION%/}.zip" "gs://$BUCKET_NAME/${FUNCTION%/}.zip"
           done
 
       - name: Deploy Logging and Notification Resources
@@ -74,9 +90,14 @@ jobs:
           terraform apply -auto-approve -input=false -target=google_logging_metric.manual_review_metric -target=google_monitoring_notification_channel.email_channel
 
       - name: Deploy Functions and Remaining Infrastructure
+        if: steps.changed-functions.outputs.functions != ''
         id: deploy_infra
         run: |
           cd pipeline
           # Add a sleep to allow the new metric to propagate
           sleep 60
-          terraform apply -auto-approve -input=false
+          TARGETS=""
+          for FUNCTION in ${{ steps.changed-functions.outputs.functions }}; do
+            TARGETS="$TARGETS -target=module.functions[\"${FUNCTION%/}\"]"
+          done
+          terraform apply -auto-approve -input=false $TARGETS
