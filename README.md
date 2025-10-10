@@ -15,11 +15,11 @@ The pipeline is a journey that an article takes through six distinct, automated 
 
 3.  **The Verification (The Shield & The Editor)**: The AI's analysis is sent down two parallel paths simultaneously. One path fact-checks the claims against external sources to generate a `confidenceScore`. The other path checks the analysis for internal consistency and adherence to business rules to generate a `qualityScore`.
 
-4.  **The Verdict (Decision & Review)**: A central decision engine looks at both the confidence and quality scores. If they are high, the lead is **Auto-Approved**. If they are low, it's rejected. If they are in the middle, the lead is flagged for **Human Review**.
+4.  **The Verdict (Decision & Review)**: A central decision engine looks at both the confidence and quality scores. If they are high, the lead is **Auto-Approved**. If they are low, it's rejected. If they are in the middle, the lead is flagged for **Human Review**, and a notification is sent via a Cloud Monitoring alert based on structured logs.
 
 5.  **The Correction (Human-in-the-Loop)**: A human analyst can view all flagged leads in a simple web interface. They can approve, discard, or correct the AI's analysis. These corrections are saved to a separate database, creating a valuable dataset to fine-tune and improve the AI over time.
 
-6.  **The Bounty (Delivery & Visualization)**: All approved leads are streamed directly into a **BigQuery** database. From there, they can be used to trigger real-time alerts (e.g., in Slack) or to build strategic dashboards for market analysis.
+6.  **The Bounty (Delivery & Visualization)**: All approved leads are streamed directly into a **BigQuery** database. A `delivery_alerter` function is triggered for each approved lead to send real-time alerts (e.g., to a webhook). All leads are stored in BigQuery for analysis and visualization in dashboards.
 
 ## 🏛️ Architecture
 
@@ -34,9 +34,20 @@ The project is divided into independent services, each corresponding to a part o
 | **1. Ingestion** | `trigger_ingestion_cycle`, `fetch_source_data`, `filter_article_content` | Finds and filters relevant articles. |
 | **2. Analysis** | `core_analysis` | Uses Gemini on Vertex AI to extract insights. |
 | **3. Verification** | `external_verification`, `internal_qc` | Fact-checks and quality-checks the AI output. |
-| **4. Decision** | `decision_engine`, `workflow.yaml` | Orchestrates verification and makes final judgment. |
+| **4. Decision** | `decision_engine`, `workflow.yaml`, Cloud Monitoring | Orchestrates verification, makes final judgment, and sends notifications for human review. |
 | **5. Human Review** | `get_manual_review`, `submit_correction`, `manual_review_interface` | Provides a UI for human oversight and correction. |
-| **6. Delivery** | `delivery_alerter`, BigQuery Table | Sends real-time alerts and stores data for dashboards. |
+| **6. Delivery** | `delivery_alerter`, BigQuery Table | Sends real-time alerts for approved leads and stores data for analysis. |
+
+## 🤝 Contributing
+
+1.  **Issue**: All work should be associated with a GitHub issue.
+2.  **New branch**: Create a new branch for the issue. **DO NOT FORGET TO UPDATE LOCAL MAIN** before creating the branch.
+3.  **Provide the changes**: Make your code changes on the new branch.
+4.  **Review tests and automation**: Ensure that all tests and automation are updated according to the code changes.
+5.  **Test/Plan**: Run tests and `terraform plan` to ensure that everything is working as expected.
+6.  **PR**: Create a Pull Request.
+7.  **Only IF PR_check is OK, pull request**: Merge the pull request only if all the checks in the PR are passing.
+8.  **Close the issue**: Close the issue after the PR is merged.
 
 ## 🚀 Getting Started & Deployment
 
@@ -57,22 +68,7 @@ To protect your `main` branch and ensure all changes are validated, you should e
 
 With this rule in place, the "Merge pull request" button will be blocked until all Terraform, unit, and security tests have passed.
 
-### 🛡️ Branch Protection & Pull Requests
 
-To protect your `main` branch and ensure all changes are validated, you should enable a branch protection rule. This will enforce the checks from the `pr_check.yml` workflow on every pull request.
-
-**How to Set Up the Rule:**
-
-1.  In your GitHub repository, go to **Settings** > **Branches**.
-2.  Click **Add branch protection rule**.
-3.  For "Branch name pattern", type `main`.
-4.  Check the box for **Require a pull request before merging**.
-5.  Check the box for **Require status checks to pass before merging**.
-6.  Check the box for **Require branches to be up to date before merging**. This is also a good practice.
-7.  A search box will appear. Type `validate` and select the `validate` check that appears. This is the name of the job in our new `pr_check.yml` workflow.
-8.  Click **Create**.
-
-With this rule in place, the "Merge pull request" button will be blocked until all Terraform, unit, and security tests have passed.
 
 ### Prerequisites
 
@@ -92,7 +88,7 @@ This project is designed to be deployed via the CI/CD workflow in `.github/workf
 
 1.  **Set Environment Variable**: Before running Terraform locally, you must set an environment variable for your Project ID:
     ```bash
-    export TF_VAR_project_id="your-gcp-project-id"
+    export TF_VAR_GCP_PROJECT_ID="your-gcp-project-id"
     ```
 2.  **Deploy Infrastructure**: Navigate to the `pipeline` directory and run the standard Terraform commands:
     ```bash
@@ -111,40 +107,7 @@ Each function module contains its own suite of unit tests. To run the tests for 
 
 The CI/CD pipeline is configured to run all tests for all modules before any deployment can proceed.
 
-## 📊 Visualizing Results: Building a Dashboard
 
-The Terraform script automatically creates a BigQuery dataset (`khortytsia_results`) and a table (`approved_leads`) to store all approved leads from the pipeline. You can connect this table to a free tool like Google Looker Studio to build your dashboard.
-
-**Step-by-Step Instructions:**
-
-1.  **Navigate to Looker Studio**
-    *   Go to [lookerstudio.google.com](https://lookerstudio.google.com).
-
-2.  **Create a New Data Source**
-    *   In the top left, click **+ Create** and select **Data Source**.
-    *   Select the **BigQuery** connector from the list of Google Connectors.
-
-3.  **Connect to Your Table**
-    *   Authorize Looker Studio to access your Google Cloud project if prompted.
-    *   In the column list that appears, select your project ID (e.g., `gen-lang-client-0963337330`).
-    *   Next, select the dataset `khortytsia_results`.
-    *   Finally, select the table `approved_leads`.
-    *   In the upper right corner, click **CONNECT**.
-
-4.  **Create Your Report**
-    *   On the next screen (which shows all your data fields), click **CREATE REPORT** in the upper right.
-    *   You will now be in the report editor with a blank canvas and your data source connected.
-
-5.  **Build Your First Charts**
-    *   **Example 1: Create a Table of Leads**
-        *   From the menu, select **Add a chart** > **Table**.
-        *   In the **Data** panel on the right, you can add "Dimensions" (your text fields) and "Metrics" (your number fields).
-        *   Add dimensions like `companyName`, `summary`, and `sourceURL`.
-        *   Add metrics like `opportunityScore`.
-    *   **Example 2: Create a Map of Opportunities**
-        *   From the menu, select **Add a chart** > **Bubble Map**.
-        *   In the **Data** panel, set the **Location** dimension to your `region` field.
-        *   Set the **Bubble size** metric to `opportunityScore` to make high-value leads appear as larger bubbles.
 
 
 ## 📊 Visualizing Results: Building a Dashboard
