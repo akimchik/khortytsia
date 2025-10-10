@@ -35,12 +35,12 @@ locals {
     fetch_source_data = {
       entry_point = "fetchSourceData"
       trigger_type = "event"
-      event_trigger_resource = google_pubsub_topic.source_to_fetch.name
+      event_trigger_resource = module.pubsub.topics["source-to-fetch"].name
     },
     filter_article_content = {
       entry_point = "filterArticleContent"
       trigger_type = "event"
-      event_trigger_resource = google_pubsub_topic.article_to_filter.name
+      event_trigger_resource = module.pubsub.topics["article-to-filter"].name
       environment_variables = {
         KEYWORDS_BUCKET = google_storage_bucket.keywords_bucket.name
       }
@@ -48,17 +48,17 @@ locals {
     core_analysis = {
       entry_point = "coreAnalysis"
       trigger_type = "event"
-      event_trigger_resource = google_pubsub_topic.article_to_analyze.name
+      event_trigger_resource = module.pubsub.topics["article-to-analyze"].name
     },
     external_verification = {
       entry_point = "externalVerification"
       trigger_type = "event"
-      event_trigger_resource = google_pubsub_topic.external_verification.name
+      event_trigger_resource = module.pubsub.topics["external-verification"].name
     },
     internal_qc = {
       entry_point = "internalQc"
       trigger_type = "event"
-      event_trigger_resource = google_pubsub_topic.internal_qc.name
+      event_trigger_resource = module.pubsub.topics["internal-qc"].name
     },
     decision_engine = {
       entry_point = "decisionEngine"
@@ -75,7 +75,7 @@ locals {
     delivery_alerter = {
       entry_point = "deliverAlert"
       trigger_type = "event"
-      event_trigger_resource = google_pubsub_topic.final_leads.name
+      event_trigger_resource = module.pubsub.topics["final-leads"].name
       environment_variables = {
         WEBHOOK_URL = "YOUR_WEBHOOK_URL_HERE"
       }
@@ -193,36 +193,58 @@ resource "google_storage_bucket_iam_member" "public_reader" {
   member = "allUsers"
 }
 
-resource "google_pubsub_topic" "source_to_fetch" {
-  name = "source-to-fetch"
+moved {
+  from = google_pubsub_topic.source_to_fetch
+  to   = module.pubsub.google_pubsub_topic.topics["source-to-fetch"]
 }
 
-resource "google_pubsub_topic" "article_to_filter" {
-  name = "article-to-filter"
+moved {
+  from = google_pubsub_topic.article_to_filter
+  to   = module.pubsub.google_pubsub_topic.topics["article-to-filter"]
 }
 
-resource "google_pubsub_topic" "article_to_analyze" {
-  name = "article-to-analyze"
+moved {
+  from = google_pubsub_topic.article_to_analyze
+  to   = module.pubsub.google_pubsub_topic.topics["article-to-analyze"]
 }
 
-resource "google_pubsub_topic" "external_verification" {
-  name = "external-verification"
+moved {
+  from = google_pubsub_topic.external_verification
+  to   = module.pubsub.google_pubsub_topic.topics["external-verification"]
 }
 
-resource "google_pubsub_topic" "internal_qc" {
-  name = "internal-qc"
+moved {
+  from = google_pubsub_topic.internal_qc
+  to   = module.pubsub.google_pubsub_topic.topics["internal-qc"]
 }
 
-resource "google_pubsub_topic" "decision_engine_queue" {
-  name = "decision-engine-queue"
+moved {
+  from = google_pubsub_topic.decision_engine_queue
+  to   = module.pubsub.google_pubsub_topic.topics["decision-engine-queue"]
 }
 
-resource "google_pubsub_topic" "final_analysis" {
-  name = "final-analysis"
+moved {
+  from = google_pubsub_topic.final_analysis
+  to   = module.pubsub.google_pubsub_topic.topics["final-analysis"]
 }
 
-resource "google_pubsub_topic" "final_leads" {
-  name = "final-leads"
+moved {
+  from = google_pubsub_topic.final_leads
+  to   = module.pubsub.google_pubsub_topic.topics["final-leads"]
+}
+
+module "pubsub" {
+  source = "./modules/pubsub"
+  topic_names = [
+    "source-to-fetch",
+    "article-to-filter",
+    "article-to-analyze",
+    "external-verification",
+    "internal-qc",
+    "decision-engine-queue",
+    "final-analysis",
+    "final-leads"
+  ]
 }
 
 # BigQuery Dataset and Table to store final results
@@ -256,7 +278,7 @@ resource "google_project_iam_member" "pubsub_to_bigquery" {
 # Pub/Sub subscription that writes directly to the BigQuery table
 resource "google_pubsub_subscription" "final_analysis_to_bigquery" {
   name  = "final-analysis-to-bigquery-sub"
-  topic = google_pubsub_topic.final_analysis.name
+  topic = module.pubsub.topics["final-analysis"].name
 
   bigquery_config {
     table               = "${google_bigquery_table.approved_leads.project}:${google_bigquery_table.approved_leads.dataset_id}.${google_bigquery_table.approved_leads.table_id}"
