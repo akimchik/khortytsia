@@ -61,20 +61,17 @@ exports.decisionEngine = async (req, res) => {
     };
 
     if (decision === 'Manual Review') {
-      // If manual review is needed, save it to the Firestore queue instead of the final topic.
+      // If manual review is needed, save it to the Firestore queue and log a structured message.
       const docRef = firestore.collection(manualReviewCollection).doc();
       await docRef.set(finalAnalysis);
       console.log(`Saved analysis for ${analysis.companyName} to manual review queue.`);
 
-      // Also publish a notification to trigger the emailer
-      const notificationMessage = { 
-        json: { 
-          companyName: analysis.companyName, 
-          summary: analysis.summary 
-        } 
-      };
-      await pubsub.topic(reviewNotificationsTopic).publishMessage(notificationMessage);
-      console.log(`Published notification for ${analysis.companyName} to ${reviewNotificationsTopic}.`);
+      // Log a structured message for the monitoring alert.
+      console.log(JSON.stringify({ 
+        review_required: true,
+        companyName: analysis.companyName, 
+        summary: analysis.summary 
+      }));
 
       res.status(200).send(`Analysis for ${analysis.companyName} requires manual review.`);
     } else {

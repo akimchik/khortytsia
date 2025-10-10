@@ -112,7 +112,7 @@ describe('decisionEngine', () => {
     expect(res.status.calledOnceWith(400)).to.be.true;
   });
 
-  it('should save to Firestore and publish a notification for manual review', async () => {
+  it('should save to Firestore and log a structured message for manual review', async () => {
     const req = {
       body: {
         companyName: 'ReviewMe Inc.',
@@ -133,6 +133,9 @@ describe('decisionEngine', () => {
       send: sinon.stub(),
     };
 
+    // Stub console.log to capture output
+    const consoleStub = sinon.stub(console, 'log');
+
     await functionToTest.decisionEngine(req, res);
 
     // 1. Check that it was saved to the Firestore manual review queue
@@ -141,15 +144,16 @@ describe('decisionEngine', () => {
     const savedData = setStub.firstCall.args[0];
     expect(savedData.decision).to.equal('Manual Review');
 
-    // 2. Check that a notification was published to the correct topic
-    expect(pubsubStub.calledOnce).to.be.true;
-    expect(topicStub.calledOnceWith('review-notifications')).to.be.true;
-    expect(publishStub.calledOnce).to.be.true;
+    // 2. Check that a structured log was written
+    expect(consoleStub.calledWith(sinon.match.string)).to.be.true;
+    const logCall = consoleStub.getCalls().find(call => call.args[0].includes('review_required'));
+    expect(logCall).to.not.be.undefined;
+    const loggedObject = JSON.parse(logCall.args[0]);
+    expect(loggedObject.review_required).to.be.true;
+    expect(loggedObject.companyName).to.equal('ReviewMe Inc.');
 
-    // 3. Check the content of the notification message
-    const notificationMessage = publishStub.firstCall.args[0].json;
-    expect(notificationMessage.companyName).to.equal('ReviewMe Inc.');
-    expect(notificationMessage.summary).to.equal('This analysis requires a human touch.');
+    // 3. Check that no Pub/Sub message was published
+    expect(publishStub.callCount).to.equal(0);
 
     // 4. Check the HTTP response
     expect(res.status.calledOnceWith(200)).to.be.true;
