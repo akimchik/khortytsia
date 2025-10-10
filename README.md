@@ -84,7 +84,7 @@ With this rule in place, the "Merge pull request" button will be blocked until a
 
 This project is designed to be deployed via the CI/CD workflow in `.github/workflows/main.yml`.
 
-1.  **Configure Service Account & Secrets**: Follow the instructions in the workflow file to set up a service account with the required permissions (`Editor`, `Project IAM Admin`) and add the `GCP_PROJECT_ID` and `GCP_SA_KEY` secrets to your GitHub repository.
+1.  **Configure Service Account & Secrets**: Follow the instructions in the workflow file to set up a service account with the required permissions (`Editor`, `Project IAM Admin`, `BigQuery Data Owner`) and add the `GCP_PROJECT_ID` and `GCP_SA_KEY` secrets to your GitHub repository.
 
 2.  **Push to `main`**: The workflow is configured to automatically test, package, and deploy all infrastructure via `terraform apply` on a push to the `main` branch.
 
