@@ -134,7 +134,16 @@ jobs:
             gsutil cp "${FUNCTION}.zip" "gs://$BUCKET_NAME/${FUNCTION}.zip"
           done
 
-      - name: Deploy Functions and Remaining Infrastructure
+      - name: Deploy Logging and Notification Resources
+        id: deploy_logging
         run: |
           cd pipeline
+          terraform apply -auto-approve -input=false -target=google_logging_metric.manual_review_metric -target=google_monitoring_notification_channel.email_channel
+
+      - name: Deploy Functions and Remaining Infrastructure
+        id: deploy_infra
+        run: |
+          cd pipeline
+          # Add a sleep to allow the new metric to propagate
+          sleep 60
           terraform apply -auto-approve -input=false
