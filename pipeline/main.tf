@@ -226,8 +226,8 @@ module "functions" {
   source_archive_bucket = google_storage_bucket.source_bucket.name
   source_archive_object = "${each.key}.zip"
   trigger_type            = each.value.trigger_type
-  event_trigger_resource  = each.value.event_trigger_resource
-  environment_variables   = each.value.environment_variables
+  event_trigger_resource  = try(each.value.event_trigger_resource, null)
+  environment_variables   = try(each.value.environment_variables, null)
 }
 
 resource "google_cloud_scheduler_job" "trigger_ingestion_cycle_scheduler" {
