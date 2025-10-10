@@ -396,12 +396,7 @@ resource "google_project_iam_member" "submit_correction_firestore" {
   member  = "serviceAccount:${google_cloudfunctions_function.submit_correction.service_account_email}"
 }
 
-# IAM for email_notifier to use the Gmail API
-resource "google_project_iam_member" "email_notifier_gmail" {
-  project = var.GCP_PROJECT_ID
-  role    = "roles/gmail.send"
-  member  = "serviceAccount:${google_cloudfunctions_function.email_notifier.service_account_email}"
-}
+
 
 resource "google_cloudfunctions_function_iam_member" "get_manual_review_invoker_all_users" {
   project        = google_cloudfunctions_function.get_manual_review.project
