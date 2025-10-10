@@ -14,6 +14,6 @@ resource "google_cloudfunctions_function" "function" {
     }
   }
 
-  trigger_http          = var.trigger_type == "http"
+  trigger_http          = var.trigger_type == "http" ? true : null
   environment_variables = var.environment_variables
 }
