@@ -297,82 +297,82 @@ resource "google_cloud_scheduler_job" "trigger_ingestion_cycle_scheduler" {
 resource "google_project_iam_member" "trigger_ingestion_cycle_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = module.functions["trigger_ingestion_cycle"].service_account_email
+  member  = "serviceAccount:${module.functions["trigger_ingestion_cycle"].service_account_email}"
 }
 
 # IAM for fetch_source_data to publish to article-to-filter
 resource "google_project_iam_member" "fetch_source_data_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = module.functions["fetch_source_data"].service_account_email
+  member  = "serviceAccount:${module.functions["fetch_source_data"].service_account_email}"
 }
 
 # IAM for filter_article_content to publish to article-to-analyze
 resource "google_project_iam_member" "filter_article_content_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = module.functions["filter_article_content"].service_account_email
+  member  = "serviceAccount:${module.functions["filter_article_content"].service_account_email}"
 }
 
 # IAM for core_analysis to invoke the workflow
 resource "google_project_iam_member" "core_analysis_workflow_invoker" {
   project = var.GCP_PROJECT_ID
   role    = "roles/workflows.invoker"
-  member  = module.functions["core_analysis"].service_account_email
+  member  = "serviceAccount:${module.functions["core_analysis"].service_account_email}"
 }
 
 # IAM for core_analysis to use Vertex AI
 resource "google_project_iam_member" "core_analysis_vertexai" {
   project = var.GCP_PROJECT_ID
   role    = "roles/aiplatform.user"
-  member  = module.functions["core_analysis"].service_account_email
+  member  = "serviceAccount:${module.functions["core_analysis"].service_account_email}"
 }
 
 # IAM for external_verification to publish to decision-engine-queue
 resource "google_project_iam_member" "external_verification_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = module.functions["external_verification"].service_account_email
+  member  = "serviceAccount:${module.functions["external_verification"].service_account_email}"
 }
 
 # IAM for internal_qc to publish to decision-engine-queue
 resource "google_project_iam_member" "internal_qc_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = module.functions["internal_qc"].service_account_email
+  member  = "serviceAccount:${module.functions["internal_qc"].service_account_email}"
 }
 
 # IAM for decision_engine to publish to final_analysis
 resource "google_project_iam_member" "decision_engine_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = module.functions["decision_engine"].service_account_email
+  member  = "serviceAccount:${module.functions["decision_engine"].service_account_email}"
 }
 
 # IAM for decision_engine to publish to final-leads
 resource "google_project_iam_member" "decision_engine_final_leads_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = module.functions["decision_engine"].service_account_email
+  member  = "serviceAccount:${module.functions["decision_engine"].service_account_email}"
 }
 
 # IAM for functions to access Firestore
 resource "google_project_iam_member" "decision_engine_firestore" {
   project = var.GCP_PROJECT_ID
   role    = "roles/datastore.user"
-  member  = module.functions["decision_engine"].service_account_email
+  member  = "serviceAccount:${module.functions["decision_engine"].service_account_email}"
 }
 
 resource "google_project_iam_member" "get_manual_review_firestore" {
   project = var.GCP_PROJECT_ID
   role    = "roles/datastore.user"
-  member  = module.functions["get_manual_review"].service_account_email
+  member  = "serviceAccount:${module.functions["get_manual_review"].service_account_email}"
 }
 
 resource "google_project_iam_member" "submit_correction_firestore" {
   project = var.GCP_PROJECT_ID
   role    = "roles/datastore.user"
-  member  = module.functions["submit_correction"].service_account_email
+  member  = "serviceAccount:${module.functions["submit_correction"].service_account_email}"
 }
 
 resource "google_cloudfunctions_function_iam_member" "get_manual_review_invoker_all_users" {
