@@ -26,6 +26,63 @@ provider "google-beta" {
   region  = var.region
 }
 
+locals {
+  functions = {
+    trigger_ingestion_cycle = {
+      entry_point = "triggerIngestionCycle"
+      trigger_type = "http"
+    },
+    fetch_source_data = {
+      entry_point = "fetchSourceData"
+      trigger_type = "event"
+      event_trigger_resource = google_pubsub_topic.source_to_fetch.name
+    },
+    filter_article_content = {
+      entry_point = "filterArticleContent"
+      trigger_type = "event"
+      event_trigger_resource = google_pubsub_topic.article_to_filter.name
+      environment_variables = {
+        KEYWORDS_BUCKET = google_storage_bucket.keywords_bucket.name
+      }
+    },
+    core_analysis = {
+      entry_point = "coreAnalysis"
+      trigger_type = "event"
+      event_trigger_resource = google_pubsub_topic.article_to_analyze.name
+    },
+    external_verification = {
+      entry_point = "externalVerification"
+      trigger_type = "event"
+      event_trigger_resource = google_pubsub_topic.external_verification.name
+    },
+    internal_qc = {
+      entry_point = "internalQc"
+      trigger_type = "event"
+      event_trigger_resource = google_pubsub_topic.internal_qc.name
+    },
+    decision_engine = {
+      entry_point = "decisionEngine"
+      trigger_type = "http"
+    },
+    get_manual_review = {
+      entry_point = "getManualReview"
+      trigger_type = "http"
+    },
+    submit_correction = {
+      entry_point = "submitCorrection"
+      trigger_type = "http"
+    },
+    delivery_alerter = {
+      entry_point = "deliverAlert"
+      trigger_type = "event"
+      event_trigger_resource = google_pubsub_topic.final_leads.name
+      environment_variables = {
+        WEBHOOK_URL = "YOUR_WEBHOOK_URL_HERE"
+      }
+    }
+  }
+}
+
 resource "google_project_service" "cloudbuild" {
   project = var.GCP_PROJECT_ID
   service = "cloudbuild.googleapis.com"
@@ -117,8 +174,6 @@ resource "google_pubsub_topic" "final_leads" {
   name = "final-leads"
 }
 
-
-
 # BigQuery Dataset and Table to store final results
 resource "google_bigquery_dataset" "results_dataset" {
   dataset_id                 = "khortytsia_results"
@@ -162,22 +217,17 @@ resource "google_pubsub_subscription" "final_analysis_to_bigquery" {
   depends_on = [google_project_iam_member.pubsub_to_bigquery]
 }
 
-resource "google_cloudfunctions_function" "trigger_ingestion_cycle" {
-  name                  = "trigger_ingestion_cycle"
-  runtime               = "nodejs20"
-  entry_point           = "triggerIngestionCycle"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
-  source_archive_object = "trigger_ingestion_cycle.zip"
-  trigger_http          = true
-  depends_on            = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
-}
+module "functions" {
+  for_each = local.functions
 
-resource "google_cloudfunctions_function_iam_member" "trigger_ingestion_cycle_invoker" {
-  project        = google_cloudfunctions_function.trigger_ingestion_cycle.project
-  region         = google_cloudfunctions_function.trigger_ingestion_cycle.region
-  cloud_function = google_cloudfunctions_function.trigger_ingestion_cycle.name
-  role           = "roles/cloudfunctions.invoker"
-  member         = "allUsers"
+  source                  = "./modules/google-cloud-function"
+  function_name           = each.key
+  entry_point             = each.value.entry_point
+  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_object = "${each.key}.zip"
+  trigger_type            = each.value.trigger_type
+  event_trigger_resource  = each.value.event_trigger_resource
+  environment_variables   = each.value.environment_variables
 }
 
 resource "google_cloud_scheduler_job" "trigger_ingestion_cycle_scheduler" {
@@ -188,230 +238,120 @@ resource "google_cloud_scheduler_job" "trigger_ingestion_cycle_scheduler" {
 
   http_target {
     http_method = "GET"
-    uri         = google_cloudfunctions_function.trigger_ingestion_cycle.https_trigger_url
+    uri         = module.functions["trigger_ingestion_cycle"].https_trigger_url
   }
-}
-
-resource "google_cloudfunctions_function" "fetch_source_data" {
-  name                  = "fetch_source_data"
-  runtime               = "nodejs20"
-  entry_point           = "fetchSourceData"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
-  source_archive_object = "fetch_source_data.zip"
-  event_trigger {
-    event_type = "google.pubsub.topic.publish"
-    resource   = google_pubsub_topic.source_to_fetch.name
-  }
-  depends_on = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
-}
-
-resource "google_cloudfunctions_function" "filter_article_content" {
-  name                  = "filter_article_content"
-  runtime               = "nodejs20"
-  entry_point           = "filterArticleContent"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
-  source_archive_object = "filter_article_content.zip"
-  event_trigger {
-    event_type = "google.pubsub.topic.publish"
-    resource   = google_pubsub_topic.article_to_filter.name
-  }
-  environment_variables = {
-    KEYWORDS_BUCKET = google_storage_bucket.keywords_bucket.name
-  }
-  depends_on = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
-}
-
-resource "google_cloudfunctions_function" "core_analysis" {
-  name                  = "core_analysis"
-  runtime               = "nodejs20"
-  entry_point           = "coreAnalysis"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
-  source_archive_object = "core_analysis.zip"
-  event_trigger {
-    event_type = "google.pubsub.topic.publish"
-    resource   = google_pubsub_topic.article_to_analyze.name
-  }
-  depends_on = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
-}
-
-resource "google_cloudfunctions_function" "external_verification" {
-  name                  = "external_verification"
-  runtime               = "nodejs20"
-  entry_point           = "externalVerification"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
-  source_archive_object = "external_verification.zip"
-  event_trigger {
-    event_type = "google.pubsub.topic.publish"
-    resource   = google_pubsub_topic.external_verification.name
-  }
-  depends_on = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
-}
-
-resource "google_cloudfunctions_function" "internal_qc" {
-  name                  = "internal_qc"
-  runtime               = "nodejs20"
-  entry_point           = "internalQc"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
-  source_archive_object = "internal_qc.zip"
-  event_trigger {
-    event_type = "google.pubsub.topic.publish"
-    resource   = google_pubsub_topic.internal_qc.name
-  }
-  depends_on = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
-}
-
-resource "google_cloudfunctions_function" "decision_engine" {
-  name                  = "decision_engine"
-  runtime               = "nodejs20"
-  entry_point           = "decisionEngine"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
-  source_archive_object = "decision_engine.zip"
-  trigger_http          = true
-  depends_on            = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
-}
-
-resource "google_cloudfunctions_function" "get_manual_review" {
-  name                  = "get_manual_review"
-  runtime               = "nodejs20"
-  entry_point           = "getManualReview"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
-  source_archive_object = "get_manual_review.zip"
-  trigger_http          = true
-  depends_on            = [google_project_service.cloudbuild, google_project_service.firestore, google_storage_bucket.source_bucket]
-}
-
-resource "google_cloudfunctions_function" "submit_correction" {
-  name                  = "submit_correction"
-  runtime               = "nodejs20"
-  entry_point           = "submitCorrection"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
-  source_archive_object = "submit_correction.zip"
-  trigger_http          = true
-  depends_on            = [google_project_service.cloudbuild, google_project_service.firestore, google_storage_bucket.source_bucket]
-}
-
-
-
-resource "google_workflows_workflow" "khortytsia_workflow" {
-  name            = "khortytsia-workflow"
-  region          = var.region
-  source_contents = file("../workflow.yaml")
 }
 
 # IAM for trigger_ingestion_cycle to publish to source-to-fetch
 resource "google_project_iam_member" "trigger_ingestion_cycle_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${google_cloudfunctions_function.trigger_ingestion_cycle.service_account_email}"
+  member  = module.functions["trigger_ingestion_cycle"].service_account_email
 }
 
 # IAM for fetch_source_data to publish to article-to-filter
 resource "google_project_iam_member" "fetch_source_data_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${google_cloudfunctions_function.fetch_source_data.service_account_email}"
+  member  = module.functions["fetch_source_data"].service_account_email
 }
 
 # IAM for filter_article_content to publish to article-to-analyze
 resource "google_project_iam_member" "filter_article_content_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${google_cloudfunctions_function.filter_article_content.service_account_email}"
+  member  = module.functions["filter_article_content"].service_account_email
 }
 
 # IAM for core_analysis to invoke the workflow
 resource "google_project_iam_member" "core_analysis_workflow_invoker" {
   project = var.GCP_PROJECT_ID
   role    = "roles/workflows.invoker"
-  member  = "serviceAccount:${google_cloudfunctions_function.core_analysis.service_account_email}"
+  member  = module.functions["core_analysis"].service_account_email
 }
 
 # IAM for core_analysis to use Vertex AI
 resource "google_project_iam_member" "core_analysis_vertexai" {
   project = var.GCP_PROJECT_ID
   role    = "roles/aiplatform.user"
-  member  = "serviceAccount:${google_cloudfunctions_function.core_analysis.service_account_email}"
+  member  = module.functions["core_analysis"].service_account_email
 }
 
 # IAM for external_verification to publish to decision-engine-queue
 resource "google_project_iam_member" "external_verification_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${google_cloudfunctions_function.external_verification.service_account_email}"
+  member  = module.functions["external_verification"].service_account_email
 }
 
 # IAM for internal_qc to publish to decision-engine-queue
 resource "google_project_iam_member" "internal_qc_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${google_cloudfunctions_function.internal_qc.service_account_email}"
+  member  = module.functions["internal_qc"].service_account_email
 }
 
-# IAM for decision_engine to publish to final_analysis and review_notifications
+# IAM for decision_engine to publish to final_analysis
 resource "google_project_iam_member" "decision_engine_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"
-}
-
-resource "google_cloudfunctions_function" "delivery_alerter" {
-  name                  = "delivery_alerter"
-  runtime               = "nodejs20"
-  entry_point           = "deliverAlert"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
-  source_archive_object = "delivery_alerter.zip"
-  event_trigger {
-    event_type = "google.pubsub.topic.publish"
-    resource   = google_pubsub_topic.final_leads.name
-  }
-  environment_variables = {
-    WEBHOOK_URL = "YOUR_WEBHOOK_URL_HERE"
-  }
-  depends_on = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
+  member  = module.functions["decision_engine"].service_account_email
 }
 
 # IAM for decision_engine to publish to final-leads
 resource "google_project_iam_member" "decision_engine_final_leads_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"
+  member  = module.functions["decision_engine"].service_account_email
 }
 
 # IAM for functions to access Firestore
 resource "google_project_iam_member" "decision_engine_firestore" {
   project = var.GCP_PROJECT_ID
   role    = "roles/datastore.user"
-  member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"
+  member  = module.functions["decision_engine"].service_account_email
 }
 
 resource "google_project_iam_member" "get_manual_review_firestore" {
   project = var.GCP_PROJECT_ID
   role    = "roles/datastore.user"
-  member  = "serviceAccount:${google_cloudfunctions_function.get_manual_review.service_account_email}"
+  member  = module.functions["get_manual_review"].service_account_email
 }
 
 resource "google_project_iam_member" "submit_correction_firestore" {
   project = var.GCP_PROJECT_ID
   role    = "roles/datastore.user"
-  member  = "serviceAccount:${google_cloudfunctions_function.submit_correction.service_account_email}"
+  member  = module.functions["submit_correction"].service_account_email
 }
 
-
-
 resource "google_cloudfunctions_function_iam_member" "get_manual_review_invoker_all_users" {
-  project        = google_cloudfunctions_function.get_manual_review.project
-  region         = google_cloudfunctions_function.get_manual_review.region
-  cloud_function = google_cloudfunctions_function.get_manual_review.name
+  project        = module.functions["get_manual_review"].project
+  region         = module.functions["get_manual_review"].region
+  cloud_function = module.functions["get_manual_review"].name
   role           = "roles/cloudfunctions.invoker"
   member         = "allUsers"
 }
 
 resource "google_cloudfunctions_function_iam_member" "submit_correction_invoker_all_users" {
-  project        = google_cloudfunctions_function.submit_correction.project
-  region         = google_cloudfunctions_function.submit_correction.region
-  cloud_function = google_cloudfunctions_function.submit_correction.name
+  project        = module.functions["submit_correction"].project
+  region         = module.functions["submit_correction"].region
+  cloud_function = module.functions["submit_correction"].name
   role           = "roles/cloudfunctions.invoker"
   member         = "allUsers"
+}
+
+resource "google_cloudfunctions_function_iam_member" "trigger_ingestion_cycle_invoker" {
+  project        = module.functions["trigger_ingestion_cycle"].project
+  region         = module.functions["trigger_ingestion_cycle"].region
+  cloud_function = module.functions["trigger_ingestion_cycle"].name
+  role           = "roles/cloudfunctions.invoker"
+  member         = "allUsers"
+}
+
+resource "google_workflows_workflow" "khortytsia_workflow" {
+  name            = "khortytsia-workflow"
+  region          = var.region
+  source_contents = file("../workflow.yaml")
 }
 
 # --- Alerting for Manual Review ---
