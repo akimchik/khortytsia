@@ -83,6 +83,57 @@ locals {
   }
 }
 
+moved {
+  from = google_cloudfunctions_function.trigger_ingestion_cycle
+  to   = module.functions["trigger_ingestion_cycle"].google_cloudfunctions_function.function
+}
+
+moved {
+  from = google_cloudfunctions_function.fetch_source_data
+  to   = module.functions["fetch_source_data"].google_cloudfunctions_function.function
+}
+
+moved {
+  from = google_cloudfunctions_function.filter_article_content
+  to   = module.functions["filter_article_content"].google_cloudfunctions_function.function
+}
+
+moved {
+  from = google_cloudfunctions_function.core_analysis
+  to   = module.functions["core_analysis"].google_cloudfunctions_function.function
+}
+
+moved {
+  from = google_cloudfunctions_function.external_verification
+  to   = module.functions["external_verification"].google_cloudfunctions_function.function
+}
+
+moved {
+  from = google_cloudfunctions_function.internal_qc
+  to   = module.functions["internal_qc"].google_cloudfunctions_function.function
+}
+
+moved {
+  from = google_cloudfunctions_function.decision_engine
+  to   = module.functions["decision_engine"].google_cloudfunctions_function.function
+}
+
+moved {
+  from = google_cloudfunctions_function.get_manual_review
+  to   = module.functions["get_manual_review"].google_cloudfunctions_function.function
+}
+
+moved {
+  from = google_cloudfunctions_function.submit_correction
+  to   = module.functions["submit_correction"].google_cloudfunctions_function.function
+}
+
+moved {
+  from = google_cloudfunctions_function.delivery_alerter
+  to   = module.functions["delivery_alerter"].google_cloudfunctions_function.function
+}
+
+
 resource "google_project_service" "cloudbuild" {
   project = var.GCP_PROJECT_ID
   service = "cloudbuild.googleapis.com"
