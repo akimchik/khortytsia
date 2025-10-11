@@ -38,7 +38,6 @@ module "storage" {
 
 module "pubsub" {
   source      = "./modules/pubsub"
-  project_id  = var.GCP_PROJECT_ID
   topic_names = var.topics
 }
 
@@ -56,11 +55,13 @@ module "functions" {
 }
 
 module "bigquery" {
-  source                 = "./modules/bigquery"
-  project_id             = var.GCP_PROJECT_ID
-  dataset_id             = "khortytsia_results"
-  table_id               = "approved_leads"
-  pubsub_service_account = google_project_service_identity.pubsub.email
+  source                       = "./modules/bigquery"
+  project_id                   = var.GCP_PROJECT_ID
+  dataset_id                   = "khortytsia_results"
+  location                     = "us-central1"
+  table_id                     = "approved_leads"
+  final_analysis_topic_name    = "final-analysis"
+  pubsub_service_account_email = google_project_service_identity.pubsub.email
 }
 
 module "monitoring" {
