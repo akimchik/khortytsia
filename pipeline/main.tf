@@ -43,24 +43,23 @@ module "pubsub" {
 }
 
 module "functions" {
-  for_each      = var.functions
-  source        = "./modules/google-cloud-function"
-  project_id    = var.GCP_PROJECT_ID
-  function_name = each.key
-  entry_point   = each.value.entry_point
-  runtime       = each.value.runtime
-  source_bucket = module.storage.source_bucket_name
-  source_file   = "${each.key}.zip"
-  trigger_type  = each.value.trigger_type
-  trigger_value = each.value.trigger_value
-  env_vars      = each.value.env_vars
+  for_each                = var.functions
+  source                  = "./modules/google-cloud-function"
+  function_name           = each.key
+  entry_point             = each.value.entry_point
+  runtime                 = each.value.runtime
+  source_archive_bucket = module.storage.source_bucket_name
+  source_archive_object = "${each.key}.zip"
+  trigger_type            = each.value.trigger_type
+  event_trigger_resource  = each.value.trigger_value
+  environment_variables   = each.value.env_vars
 }
 
 module "bigquery" {
-  source              = "./modules/bigquery"
-  project_id          = var.GCP_PROJECT_ID
-  dataset_id          = "khortytsia_results"
-  table_id            = "approved_leads"
+  source                 = "./modules/bigquery"
+  project_id             = var.GCP_PROJECT_ID
+  dataset_id             = "khortytsia_results"
+  table_id               = "approved_leads"
   pubsub_service_account = google_project_service_identity.pubsub.email
 }
 
@@ -73,9 +72,9 @@ module "monitoring" {
 }
 
 module "scheduler" {
-  source          = "./modules/scheduler"
-  project_id      = var.GCP_PROJECT_ID
-  function_url    = module.functions["trigger_ingestion_cycle"].function_url
+  source       = "./modules/scheduler"
+  project_id   = var.GCP_PROJECT_ID
+  function_url = module.functions["trigger_ingestion_cycle"].function_url
 }
 
 resource "google_workflows_workflow" "khortytsia_workflow" {
