@@ -65,9 +65,11 @@ module "bigquery" {
 }
 
 module "monitoring" {
-  source       = "./modules/monitoring"
-  project_id   = var.GCP_PROJECT_ID
-  email_to     = var.EMAIL_TO
+  source                    = "./modules/monitoring"
+  alert_policy_display_name = "Alert for Manual Review Items"
+  metric_name               = "manual_review_required_metric"
+  metric_filter             = "resource.type=\"cloud_function\" AND jsonPayload.review_required=true"
+  email_to                  = var.EMAIL_TO
 }
 
 module "scheduler" {
