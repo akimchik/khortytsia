@@ -37,9 +37,9 @@ module "storage" {
 }
 
 module "pubsub" {
-  source     = "./modules/pubsub"
-  project_id = var.GCP_PROJECT_ID
-  topics     = var.topics
+  source      = "./modules/pubsub"
+  project_id  = var.GCP_PROJECT_ID
+  topic_names = var.topics
 }
 
 module "functions" {
