@@ -42,7 +42,7 @@ locals {
       trigger_type = "event"
       event_trigger_resource = module.pubsub.topics["article-to-filter"].name
       environment_variables = {
-        KEYWORDS_BUCKET = google_storage_bucket.keywords_bucket.name
+        KEYWORDS_BUCKET = module.storage.keywords_bucket_name
       }
     },
     core_analysis = {
@@ -169,28 +169,32 @@ resource "random_string" "bucket_prefix" {
   upper   = false
 }
 
-resource "google_storage_bucket" "source_bucket" {
-  name          = "${var.GCP_PROJECT_ID}-source-code"
-  location      = var.region
-  force_destroy = true
+moved {
+  from = google_storage_bucket.source_bucket
+  to   = module.storage.google_storage_bucket.source_bucket
 }
 
-resource "google_storage_bucket" "keywords_bucket" {
-  name          = "${var.GCP_PROJECT_ID}-keywords-${random_string.bucket_prefix.result}"
-  location      = var.region
-  force_destroy = true
+moved {
+  from = google_storage_bucket.keywords_bucket
+  to   = module.storage.google_storage_bucket.keywords_bucket
 }
 
-resource "google_storage_bucket_object" "keywords" {
-  name   = "keywords.json"
-  bucket = google_storage_bucket.keywords_bucket.name
-  source = "../filter_article_content/keywords.json"
+moved {
+  from = google_storage_bucket_object.keywords
+  to   = module.storage.google_storage_bucket_object.keywords
 }
 
-resource "google_storage_bucket_iam_member" "public_reader" {
-  bucket = google_storage_bucket.keywords_bucket.name
-  role   = "roles/storage.objectViewer"
-  member = "allUsers"
+moved {
+  from = google_storage_bucket_iam_member.public_reader
+  to   = module.storage.google_storage_bucket_iam_member.public_reader
+}
+
+module "storage" {
+  source                 = "./modules/storage"
+  source_bucket_name     = "${var.GCP_PROJECT_ID}-source-code"
+  keywords_bucket_name   = "${var.GCP_PROJECT_ID}-keywords-${random_string.bucket_prefix.result}"
+  location               = var.region
+  keywords_source_path   = "../filter_article_content/keywords.json"
 }
 
 moved {
@@ -296,7 +300,7 @@ module "functions" {
   source                  = "./modules/google-cloud-function"
   function_name           = each.key
   entry_point             = each.value.entry_point
-  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_bucket = module.storage.source_bucket_name
   source_archive_object = "${each.key}.zip"
   trigger_type            = each.value.trigger_type
   event_trigger_resource  = try(each.value.event_trigger_resource, null)
