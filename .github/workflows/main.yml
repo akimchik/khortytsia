@@ -33,8 +33,6 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-
-
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
         with:
@@ -43,40 +41,26 @@ jobs:
       - name: Run All Unit & Security Tests
         uses: ./.github/actions/run-all-tests
 
-
       - name: Terraform Init
         run: terraform init -reconfigure -input=false
         working-directory: ./pipeline
 
-      - name: Create Source Bucket
-        id: create_bucket
-        run: terraform apply -target=google_storage_bucket.source_bucket -auto-approve -input=false
-        working-directory: ./pipeline
-
       - name: Package and Upload Source Code
         run: |
-          FUNCTIONS=("trigger_ingestion_cycle" "fetch_source_data" "filter_article_content" "core_analysis" "external_verification" "internal_qc" "decision_engine" "delivery_alerter" "get_manual_review" "submit_correction")
           BUCKET_NAME="${{ secrets.GCP_PROJECT_ID }}-source-code"
-          for FUNCTION in "${FUNCTIONS[@]}"
-          do
-            echo "Packaging $FUNCTION..."
-            cd $FUNCTION
-            zip -r "../${FUNCTION}.zip" .
-            cd ..
-            echo "Uploading ${FUNCTION}.zip to gs://$BUCKET_NAME/"
-            gsutil cp "${FUNCTION}.zip" "gs://$BUCKET_NAME/${FUNCTION}.zip"
+          for dir in */; do
+            if [ -f "$dir/package.json" ]; then
+              echo "Packaging $dir..."
+              cd "$dir"
+              zip -r "../${dir%/}.zip" .
+              cd ..
+              echo "Uploading ${dir%/}.zip to gs://$BUCKET_NAME/"
+              gsutil cp "${dir%/}.zip" "gs://$BUCKET_NAME/${dir%/}.zip"
+            fi
           done
 
-      - name: Deploy Logging and Notification Resources
-        id: deploy_logging
-        run: |
-          cd pipeline
-          terraform apply -auto-approve -input=false -target=google_logging_metric.manual_review_metric -target=google_monitoring_notification_channel.email_channel
-
-      - name: Deploy Functions and Remaining Infrastructure
+      - name: Terraform Apply
         id: deploy_infra
         run: |
           cd pipeline
-          # Add a sleep to allow the new metric to propagate
-          sleep 60
           terraform apply -auto-approve -input=false
