@@ -295,16 +295,18 @@ module "functions" {
   environment_variables   = try(each.value.environment_variables, null)
 }
 
-resource "google_cloud_scheduler_job" "trigger_ingestion_cycle_scheduler" {
-  name        = "trigger-ingestion-cycle-scheduler"
-  description = "Triggers the ingestion cycle every 30 minutes"
-  schedule    = var.schedule
-  time_zone   = "Etc/UTC"
+moved {
+  from = google_cloud_scheduler_job.trigger_ingestion_cycle_scheduler
+  to   = module.scheduler.google_cloud_scheduler_job.scheduler
+}
 
-  http_target {
-    http_method = "GET"
-    uri         = module.functions["trigger_ingestion_cycle"].https_trigger_url
-  }
+module "scheduler" {
+  source          = "./modules/scheduler"
+  job_name        = "trigger-ingestion-cycle-scheduler"
+  description     = "Triggers the ingestion cycle every 30 minutes"
+  schedule        = var.schedule
+  time_zone       = "Etc/UTC"
+  http_target_uri = module.functions["trigger_ingestion_cycle"].https_trigger_url
 }
 
 # IAM for trigger_ingestion_cycle to publish to source-to-fetch
