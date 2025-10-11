@@ -228,7 +228,7 @@ resource "google_project_iam_member" "trigger_ingestion_cycle_pubsub" {
 resource "google_cloudfunctions_function_iam_member" "trigger_ingestion_cycle_invoker" {
   project        = module.functions["trigger_ingestion_cycle"].project
   region         = module.functions["trigger_ingestion_cycle"].region
-  cloud_function = module.functions["trigger_ingestion_cycle"].function_name
+  cloud_function = module.functions["trigger_ingestion_cycle"].name
   role           = "roles/cloudfunctions.invoker"
   member         = "allUsers"
 }
@@ -236,7 +236,7 @@ resource "google_cloudfunctions_function_iam_member" "trigger_ingestion_cycle_in
 resource "google_cloudfunctions_function_iam_member" "get_manual_review_invoker_all_users" {
   project        = module.functions["get_manual_review"].project
   region         = module.functions["get_manual_review"].region
-  cloud_function = module.functions["get_manual_review"].function_name
+  cloud_function = module.functions["get_manual_review"].name
   role           = "roles/cloudfunctions.invoker"
   member         = "allUsers"
 }
@@ -244,7 +244,7 @@ resource "google_cloudfunctions_function_iam_member" "get_manual_review_invoker_
 resource "google_cloudfunctions_function_iam_member" "submit_correction_invoker_all_users" {
   project        = module.functions["submit_correction"].project
   region         = module.functions["submit_correction"].region
-  cloud_function = module.functions["submit_correction"].function_name
+  cloud_function = module.functions["submit_correction"].name
   role           = "roles/cloudfunctions.invoker"
   member         = "allUsers"
 }
