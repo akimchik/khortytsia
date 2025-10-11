@@ -31,9 +31,11 @@ resource "random_string" "bucket_prefix" {
 }
 
 module "storage" {
-  source        = "./modules/storage"
-  project_id    = var.GCP_PROJECT_ID
-  bucket_prefix = random_string.bucket_prefix.result
+  source               = "./modules/storage"
+  source_bucket_name   = "${var.GCP_PROJECT_ID}-source-code"
+  keywords_bucket_name = "${var.GCP_PROJECT_ID}-keywords-${random_string.bucket_prefix.result}"
+  location             = "US-CENTRAL1"
+  keywords_source_path = "../filter_article_content/keywords.json"
 }
 
 module "pubsub" {
@@ -73,7 +75,7 @@ module "monitoring" {
 }
 
 module "scheduler" {
-  source       = "./modules/scheduler"
+  source          = "./modules/scheduler"
   job_name        = "trigger-ingestion-cycle-scheduler"
   description     = "Triggers the ingestion cycle every 30 minutes"
   schedule        = "*/30 * * * *"
