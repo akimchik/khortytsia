@@ -80,7 +80,7 @@ module "scheduler" {
   description     = "Triggers the ingestion cycle every 30 minutes"
   schedule        = "*/30 * * * *"
   time_zone       = "Etc/UTC"
-  http_target_uri = module.functions["trigger_ingestion_cycle"].function_url
+  http_target_uri = module.functions["trigger_ingestion_cycle"].https_trigger_url
 }
 
 resource "google_workflows_workflow" "khortytsia_workflow" {
