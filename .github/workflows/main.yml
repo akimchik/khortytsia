@@ -47,9 +47,17 @@ jobs:
 
       - name: Terraform Apply
         id: deploy_infra
+        continue-on-error: true
         run: |
           cd pipeline
           terraform apply -auto-approve -input=false
+
+      - name: Trigger State Import on Failure
+        if: steps.deploy_infra.outcome == 'failure'
+        run: |
+          gh workflow run import-state.yml
+          echo "State import workflow triggered. Please re-run this workflow after the import is complete."
+          exit 1
 
       - name: Package and Upload Source Code
         run: |

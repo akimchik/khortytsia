@@ -39,10 +39,23 @@ jobs:
         id: import
         run: |
           cd pipeline
-          terraform import module.storage.google_storage_bucket.source_bucket ${{ secrets.GCP_PROJECT_ID }}-source-code || echo "Failed to import source_bucket. It may not exist."
-          terraform import module.bigquery.google_bigquery_dataset.results_dataset ${{ secrets.GCP_PROJECT_ID }}:khortytsia_results || echo "Failed to import results_dataset. It may not exist."
-          terraform import module.monitoring.google_logging_metric.metric manual_review_required_metric || echo "Failed to import manual_review_metric. It may not exist."
+          # Import storage buckets
+          terraform import module.storage.google_storage_bucket.source_bucket ${{ secrets.GCP_PROJECT_ID }}-source-code || echo "Source bucket already imported or does not exist"
+          terraform import module.storage.google_storage_bucket.keywords_bucket $(terraform output -raw keywords_bucket_name) || echo "Keywords bucket already imported or does not exist"
+
+          # Import BigQuery dataset and table
+          terraform import module.bigquery.google_bigquery_dataset.results_dataset ${{ secrets.GCP_PROJECT_ID }}:khortytsia_results || echo "BigQuery dataset already imported or does not exist"
+          terraform import module.bigquery.google_bigquery_table.approved_leads ${{ secrets.GCP_PROJECT_ID }}:khortytsia_results.approved_leads || echo "BigQuery table already imported or does not exist"
+
+          # Import monitoring resources
+          terraform import module.monitoring.google_logging_metric.metric manual_review_required_metric || echo "Logging metric already imported or does not exist"
+          terraform import module.monitoring.google_monitoring_notification_channel.email_channel ${{ secrets.EMAIL_TO }} || echo "Notification channel already imported or does not exist"
+
+          # Import Pub/Sub topics
           for topic in $(gcloud pubsub topics list --format='value(name)' --filter='name:projects/${{ secrets.GCP_PROJECT_ID }}/topics/'); do
             topic_name=$(basename $topic)
-            terraform import module.pubsub.google_pubsub_topic.topics["$topic_name"] $topic_name || echo "Failed to import topic $topic_name. It may not exist."
+            terraform import module.pubsub.google_pubsub_topic.topics["$topic_name"] $topic_name || echo "Topic $topic_name already imported or does not exist"
           done
+
+          # Import service accounts
+          terraform import google_service_account.khortytsia_workflow_sa projects/${{ secrets.GCP_PROJECT_ID }}/serviceAccounts/khortytsia-workflow-sa@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com || echo "Workflow service account already imported or does not exist"
