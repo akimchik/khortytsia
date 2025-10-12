@@ -1,19 +1,16 @@
-# This workflow is manually triggered to destroy the Terraform-managed infrastructure.
-name: Manual Destroy Infrastructure
+name: Destroy Infrastructure
 
 on:
-  # This allows the workflow to be triggered manually from the GitHub Actions UI
   workflow_dispatch:
 
 jobs:
-  destroy-infrastructure:
+  destroy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Authenticate to GCP so Terraform can access project resources
       - name: Authenticate to Google Cloud
         uses: 'google-github-actions/auth@v1'
         with:
@@ -29,15 +26,16 @@ jobs:
         with:
           terraform_version: 1.2.5
 
+      - name: Terraform Init
+        run: |
+          cd pipeline
+          terraform init
+
       - name: Terraform Destroy
-        id: destroy
         env:
           TF_VAR_GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           TF_VAR_EMAIL_FROM: ${{ secrets.TF_VAR_EMAIL_FROM }}
           TF_VAR_EMAIL_TO: ${{ secrets.TF_VAR_EMAIL_TO }}
         run: |
           cd pipeline
-          terraform init -reconfigure
-          echo "Starting Terraform destroy..."
           terraform destroy -auto-approve
-          echo "Infrastructure destruction complete."
