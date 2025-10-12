@@ -45,11 +45,11 @@ jobs:
         run: terraform init -reconfigure -input=false
         working-directory: ./pipeline
 
-      - name: Terraform Apply
-        id: deploy_infra
+      - name: Terraform Plan
+        id: plan_infra
         run: |
           cd pipeline
-          terraform apply -auto-approve -input=false
+          terraform plan -no-color
 
       - name: Package and Upload Source Code
         run: |
