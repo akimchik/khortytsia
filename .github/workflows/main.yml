@@ -50,19 +50,7 @@ jobs:
         run: terraform init -reconfigure -input=false
         working-directory: ./pipeline
 
-      - name: Package and Upload Source Code
-        run: |
-          BUCKET_NAME="${{ secrets.GCP_PROJECT_ID }}-source-code"
-          for dir in */; do
-            if [ -f "$dir/package.json" ]; then
-              echo "Packaging $dir..."
-              cd "$dir"
-              zip -r "../${dir%/}.zip" .
-              cd ..
-              echo "Uploading ${dir%/}.zip to gs://$BUCKET_NAME/"
-              gsutil cp "${dir%/}.zip" "gs://$BUCKET_NAME/${dir%/}.zip"
-            fi
-          done
+
 
       - name: Terraform Apply
         id: deploy_infra
