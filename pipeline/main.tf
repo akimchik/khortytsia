@@ -55,12 +55,6 @@ resource "google_project_service_identity" "pubsub" {
   service  = "pubsub.googleapis.com"
 }
 
-resource "random_string" "bucket_prefix" {
-  length  = 8
-  special = false
-  upper   = false
-}
-
 resource "google_storage_bucket" "source_bucket" {
   name          = "${var.GCP_PROJECT_ID}-source-code"
   location      = var.region
@@ -68,7 +62,7 @@ resource "google_storage_bucket" "source_bucket" {
 }
 
 resource "google_storage_bucket" "keywords_bucket" {
-  name          = "${var.GCP_PROJECT_ID}-keywords-${random_string.bucket_prefix.result}"
+  name          = "${var.GCP_PROJECT_ID}-keywords"
   location      = var.region
   force_destroy = true
 }
