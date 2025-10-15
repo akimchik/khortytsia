@@ -303,66 +303,6 @@ module "scheduler" {
   http_target_uri = module.functions["trigger_ingestion_cycle"].https_trigger_url
 }
 
-moved {
-  from = google_project_iam_member.trigger_ingestion_cycle_pubsub
-  to   = google_project_iam_member.trigger_ingestion_cycle_pubsub
-}
-
-moved {
-  from = google_project_iam_member.fetch_source_data_pubsub
-  to   = google_project_iam_member.fetch_source_data_pubsub
-}
-
-moved {
-  from = google_project_iam_member.filter_article_content_pubsub
-  to   = google_project_iam_member.filter_article_content_pubsub
-}
-
-moved {
-  from = google_project_iam_member.core_analysis_workflow_invoker
-  to   = google_project_iam_member.core_analysis_workflow_invoker
-}
-
-moved {
-  from = google_project_iam_member.core_analysis_vertexai
-  to   = google_project_iam_member.core_analysis_vertexai
-}
-
-moved {
-  from = google_project_iam_member.external_verification_pubsub
-  to   = google_project_iam_member.external_verification_pubsub
-}
-
-moved {
-  from = google_project_iam_member.internal_qc_pubsub
-  to   = google_project_iam_member.internal_qc_pubsub
-}
-
-moved {
-  from = google_project_iam_member.decision_engine_pubsub
-  to   = google_project_iam_member.decision_engine_pubsub
-}
-
-moved {
-  from = google_project_iam_member.decision_engine_final_leads_pubsub
-  to   = google_project_iam_member.decision_engine_final_leads_pubsub
-}
-
-moved {
-  from = google_project_iam_member.decision_engine_firestore
-  to   = google_project_iam_member.decision_engine_firestore
-}
-
-moved {
-  from = google_project_iam_member.get_manual_review_firestore
-  to   = google_project_iam_member.get_manual_review_firestore
-}
-
-moved {
-  from = google_project_iam_member.submit_correction_firestore
-  to   = google_project_iam_member.submit_correction_firestore
-}
-
 # IAM for trigger_ingestion_cycle to publish to source-to-fetch
 resource "google_project_iam_member" "trigger_ingestion_cycle_pubsub" {
   project = var.GCP_PROJECT_ID
