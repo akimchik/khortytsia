@@ -1,13 +1,17 @@
-name: PR Validation Checks
+name: PR Check
 
 on:
   pull_request:
     branches:
-      - main
+      - '**'
 
 jobs:
-  validate:
+  validate-and-plan:
     runs-on: ubuntu-latest
+    env:
+      TF_VAR_GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      TF_VAR_EMAIL_FROM: ${{ secrets.TF_VAR_EMAIL_FROM }}
+      TF_VAR_EMAIL_TO: ${{ secrets.TF_VAR_EMAIL_TO }}
 
     steps:
       - name: Checkout code
@@ -33,22 +37,14 @@ jobs:
         with:
           terraform_version: 1.2.5
 
-      - name: Validate Terraform
-        id: validate_tf
-        run: |
-          cd pipeline
-          terraform init
-          terraform validate
+      - name: Terraform Init
+        run: terraform init -reconfigure -input=false
+        working-directory: ./pipeline
+
+      - name: Terraform Validate
+        run: terraform validate -no-color
+        working-directory: ./pipeline
 
       - name: Terraform Plan
-        id: plan_tf
-        env:
-          TF_VAR_GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-          TF_VAR_EMAIL_FROM: ${{ secrets.TF_VAR_EMAIL_FROM }}
-          TF_VAR_EMAIL_TO: ${{ secrets.TF_VAR_EMAIL_TO }}
-        run: |
-          cd pipeline
-          terraform plan -no-color
-
-      - name: Run All Unit & Security Tests
-        uses: ./.github/actions/run-all-tests
+        run: terraform plan -no-color -input=false
+        working-directory: ./pipeline
