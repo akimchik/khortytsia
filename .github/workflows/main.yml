@@ -45,12 +45,6 @@ jobs:
         run: terraform init -reconfigure -input=false
         working-directory: ./pipeline
 
-      - name: Terraform Apply
-        id: deploy_infra
-        run: |
-          cd pipeline
-          terraform apply -auto-approve -input=false
-
       - name: Package and Upload Source Code
         run: |
           BUCKET_NAME="${{ secrets.GCP_PROJECT_ID }}-source-code"
@@ -64,3 +58,9 @@ jobs:
               gsutil cp "${dir%/}.zip" "gs://$BUCKET_NAME/${dir%/}.zip"
             fi
           done
+
+      - name: Terraform Apply
+        id: deploy_infra
+        run: |
+          cd pipeline
+          terraform apply -auto-approve -input=false
