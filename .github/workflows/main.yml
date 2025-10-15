@@ -7,7 +7,12 @@ on:
       - main
 
 jobs:
+  package-and-upload:
+    uses: ./.github/workflows/package_and_upload.yml
+    secrets: inherit
+
   test-and-deploy:
+    needs: package-and-upload
     runs-on: ubuntu-latest
     env:
       TF_VAR_GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
