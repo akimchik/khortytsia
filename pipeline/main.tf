@@ -163,12 +163,6 @@ resource "google_project_service_identity" "pubsub" {
   service  = "pubsub.googleapis.com"
 }
 
-resource "random_string" "bucket_prefix" {
-  length  = 8
-  special = false
-  upper   = false
-}
-
 moved {
   from = google_storage_bucket.source_bucket
   to   = module.storage.google_storage_bucket.source_bucket
@@ -192,7 +186,7 @@ moved {
 module "storage" {
   source                 = "./modules/storage"
   source_bucket_name     = "${var.GCP_PROJECT_ID}-source-code"
-  keywords_bucket_name   = "${var.GCP_PROJECT_ID}-keywords-${random_string.bucket_prefix.result}"
+  keywords_bucket_name   = "gen-lang-client-0963337330-keywords-ulrdl8sh"
   location               = var.region
   keywords_source_path   = "../filter_article_content/keywords.json"
 }
@@ -307,6 +301,66 @@ module "scheduler" {
   schedule        = var.schedule
   time_zone       = "Etc/UTC"
   http_target_uri = module.functions["trigger_ingestion_cycle"].https_trigger_url
+}
+
+moved {
+  from = google_project_iam_member.trigger_ingestion_cycle_pubsub
+  to   = google_project_iam_member.trigger_ingestion_cycle_pubsub
+}
+
+moved {
+  from = google_project_iam_member.fetch_source_data_pubsub
+  to   = google_project_iam_member.fetch_source_data_pubsub
+}
+
+moved {
+  from = google_project_iam_member.filter_article_content_pubsub
+  to   = google_project_iam_member.filter_article_content_pubsub
+}
+
+moved {
+  from = google_project_iam_member.core_analysis_workflow_invoker
+  to   = google_project_iam_member.core_analysis_workflow_invoker
+}
+
+moved {
+  from = google_project_iam_member.core_analysis_vertexai
+  to   = google_project_iam_member.core_analysis_vertexai
+}
+
+moved {
+  from = google_project_iam_member.external_verification_pubsub
+  to   = google_project_iam_member.external_verification_pubsub
+}
+
+moved {
+  from = google_project_iam_member.internal_qc_pubsub
+  to   = google_project_iam_member.internal_qc_pubsub
+}
+
+moved {
+  from = google_project_iam_member.decision_engine_pubsub
+  to   = google_project_iam_member.decision_engine_pubsub
+}
+
+moved {
+  from = google_project_iam_member.decision_engine_final_leads_pubsub
+  to   = google_project_iam_member.decision_engine_final_leads_pubsub
+}
+
+moved {
+  from = google_project_iam_member.decision_engine_firestore
+  to   = google_project_iam_member.decision_engine_firestore
+}
+
+moved {
+  from = google_project_iam_member.get_manual_review_firestore
+  to   = google_project_iam_member.get_manual_review_firestore
+}
+
+moved {
+  from = google_project_iam_member.submit_correction_firestore
+  to   = google_project_iam_member.submit_correction_firestore
 }
 
 # IAM for trigger_ingestion_cycle to publish to source-to-fetch
