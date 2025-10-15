@@ -42,14 +42,6 @@ jobs:
         uses: ./.github/actions/run-all-tests
 
       - name: Package and Upload Source Code
-        uses: ./.github/workflows/package_and_upload.yml
-        secrets: inherit
-
-      - name: Terraform Init
-        run: terraform init -reconfigure -input=false
-        working-directory: ./pipeline
-
-      - name: Package and Upload Source Code
         run: |
           BUCKET_NAME="${{ secrets.GCP_PROJECT_ID }}-source-code"
           for dir in */; do
@@ -62,6 +54,10 @@ jobs:
               gsutil cp "${dir%/}.zip" "gs://$BUCKET_NAME/${dir%/}.zip"
             fi
           done
+
+      - name: Terraform Init
+        run: terraform init -reconfigure -input=false
+        working-directory: ./pipeline
 
       - name: Terraform Apply
         id: deploy_infra
