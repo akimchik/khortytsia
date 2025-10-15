@@ -1,0 +1,35 @@
+name: Package and Upload Source Code
+
+on:
+  workflow_dispatch:
+
+jobs:
+  package-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Authenticate to Google Cloud
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Package and Upload Source Code
+        run: |
+          FUNCTIONS=("trigger_ingestion_cycle" "fetch_source_data" "filter_article_content" "core_analysis" "external_verification" "internal_qc" "decision_engine" "delivery_alerter" "get_manual_review" "submit_correction")
+          BUCKET_NAME="${{ secrets.GCP_PROJECT_ID }}-source-code"
+          for FUNCTION in "${FUNCTIONS[@]}"
+          do
+            echo "Packaging $FUNCTION..."
+            cd $FUNCTION
+            zip -r "../${FUNCTION}.zip" .
+            cd ..
+            echo "Uploading ${FUNCTION}.zip to gs://$BUCKET_NAME/"
+            gsutil cp "${FUNCTION}.zip" "gs://$BUCKET_NAME/${FUNCTION}.zip"
+          done
