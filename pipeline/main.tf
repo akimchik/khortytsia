@@ -169,17 +169,16 @@ module "function_external_verification" {
   depends_on             = [google_project_service.cloudbuild, module.storage]
 }
 
-resource "google_cloudfunctions_function" "internal_qc" {
-  name                  = "internal_qc"
-  runtime               = "nodejs20"
-  entry_point           = "internalQc"
-  source_archive_bucket = module.storage.source_bucket_name
-  source_archive_object = "internal_qc.zip"
-  event_trigger {
-    event_type = "google.pubsub.topic.publish"
-    resource   = module.pubsub.topics["internal-qc"].name
-  }
-  depends_on = [google_project_service.cloudbuild, module.storage]
+module "function_internal_qc" {
+  source                 = "./modules/google-cloud-function"
+  function_name          = "internal_qc"
+  entry_point            = "internalQc"
+  runtime                = "nodejs20"
+  source_archive_bucket  = module.storage.source_bucket_name
+  source_archive_object  = "internal_qc.zip"
+  trigger_type           = "event"
+  event_trigger_resource = module.pubsub.topics["internal-qc"].name
+  depends_on             = [google_project_service.cloudbuild, module.storage]
 }
 
 resource "google_cloudfunctions_function" "decision_engine" {
@@ -266,7 +265,7 @@ resource "google_project_iam_member" "external_verification_pubsub" {
 resource "google_project_iam_member" "internal_qc_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${google_cloudfunctions_function.internal_qc.service_account_email}"
+  member  = "serviceAccount:${module.function_internal_qc.service_account_email}"
 }
 
 # IAM for decision_engine to publish to final_analysis and review_notifications
