@@ -339,46 +339,10 @@ resource "google_cloudfunctions_function_iam_member" "submit_correction_invoker_
   member         = "allUsers"
 }
 
-# --- Alerting for Manual Review ---
-
-# 1. Notification Channel to send the alert email
-resource "google_monitoring_notification_channel" "email_channel" {
-  display_name = "Email Akim Linnik"
-  type         = "email"
-  labels = {
-    email_address = var.EMAIL_TO
-  }
-}
-
-# 2. A custom log-based metric to count manual review events
-resource "google_logging_metric" "manual_review_metric" {
-  name   = "manual_review_required_metric"
-  filter = "resource.type=\"cloud_function\" AND jsonPayload.review_required=true"
-  metric_descriptor {
-    metric_kind = "DELTA"
-    value_type  = "INT64"
-  }
-}
-
-# 3. The alert policy that triggers on the metric
-resource "google_monitoring_alert_policy" "manual_review_alert" {
-  display_name = "Alert for Manual Review Items"
-  combiner     = "OR"
-  notification_channels = [google_monitoring_notification_channel.email_channel.name]
-
-  conditions {
-    display_name = "Manual Review Required"
-    condition_threshold {
-      filter     = "metric.type=\"logging.googleapis.com/user/${google_logging_metric.manual_review_metric.name}\" AND resource.type=\"cloud_function\""
-      duration   = "60s"
-      comparison = "COMPARISON_GT"
-      trigger {
-        count = 1
-      }
-      aggregations {
-        alignment_period   = "60s"
-        per_series_aligner = "ALIGN_COUNT"
-      }
-    }
-  }
+module "monitoring" {
+  source                    = "./modules/monitoring"
+  email_to                  = var.EMAIL_TO
+  metric_name               = "manual_review_required_metric"
+  metric_filter             = "resource.type=\"cloud_function\" AND jsonPayload.review_required=true"
+  alert_policy_display_name = "Alert for Manual Review Items"
 }
