@@ -55,28 +55,12 @@ resource "google_project_service_identity" "pubsub" {
   service  = "pubsub.googleapis.com"
 }
 
-resource "google_storage_bucket" "source_bucket" {
-  name          = "${var.GCP_PROJECT_ID}-source-code"
-  location      = var.region
-  force_destroy = true
-}
-
-resource "google_storage_bucket" "keywords_bucket" {
-  name          = "${var.GCP_PROJECT_ID}-keywords"
-  location      = var.region
-  force_destroy = true
-}
-
-resource "google_storage_bucket_object" "keywords" {
-  name   = "keywords.json"
-  bucket = google_storage_bucket.keywords_bucket.name
-  source = "../filter_article_content/keywords.json"
-}
-
-resource "google_storage_bucket_iam_member" "public_reader" {
-  bucket = google_storage_bucket.keywords_bucket.name
-  role   = "roles/storage.objectViewer"
-  member = "allUsers"
+module "storage" {
+  source               = "./modules/storage"
+  source_bucket_name   = "${var.GCP_PROJECT_ID}-source-code"
+  keywords_bucket_name = "${var.GCP_PROJECT_ID}-keywords"
+  location             = var.region
+  keywords_source_path = "../filter_article_content/keywords.json"
 }
 
 resource "google_pubsub_topic" "source_to_fetch" {
@@ -160,10 +144,10 @@ resource "google_cloudfunctions_function" "trigger_ingestion_cycle" {
   name                  = "trigger_ingestion_cycle"
   runtime               = "nodejs20"
   entry_point           = "triggerIngestionCycle"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_bucket = module.storage.source_bucket_name
   source_archive_object = "trigger_ingestion_cycle.zip"
   trigger_http          = true
-  depends_on            = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
+  depends_on            = [google_project_service.cloudbuild, module.storage]
 }
 
 resource "google_cloudfunctions_function_iam_member" "trigger_ingestion_cycle_invoker" {
@@ -187,98 +171,98 @@ resource "google_cloudfunctions_function" "fetch_source_data" {
   name                  = "fetch_source_data"
   runtime               = "nodejs20"
   entry_point           = "fetchSourceData"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_bucket = module.storage.source_bucket_name
   source_archive_object = "fetch_source_data.zip"
   event_trigger {
     event_type = "google.pubsub.topic.publish"
     resource   = google_pubsub_topic.source_to_fetch.name
   }
-  depends_on = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
+  depends_on = [google_project_service.cloudbuild, module.storage]
 }
 
 resource "google_cloudfunctions_function" "filter_article_content" {
   name                  = "filter_article_content"
   runtime               = "nodejs20"
   entry_point           = "filterArticleContent"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_bucket = module.storage.source_bucket_name
   source_archive_object = "filter_article_content.zip"
   event_trigger {
     event_type = "google.pubsub.topic.publish"
     resource   = google_pubsub_topic.article_to_filter.name
   }
   environment_variables = {
-    KEYWORDS_BUCKET = google_storage_bucket.keywords_bucket.name
+    KEYWORDS_BUCKET = module.storage.keywords_bucket_name
   }
-  depends_on = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
+  depends_on = [google_project_service.cloudbuild, module.storage]
 }
 
 resource "google_cloudfunctions_function" "core_analysis" {
   name                  = "core_analysis"
   runtime               = "nodejs20"
   entry_point           = "coreAnalysis"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_bucket = module.storage.source_bucket_name
   source_archive_object = "core_analysis.zip"
   event_trigger {
     event_type = "google.pubsub.topic.publish"
     resource   = google_pubsub_topic.article_to_analyze.name
   }
-  depends_on = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
+  depends_on = [google_project_service.cloudbuild, module.storage]
 }
 
 resource "google_cloudfunctions_function" "external_verification" {
   name                  = "external_verification"
   runtime               = "nodejs20"
   entry_point           = "externalVerification"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_bucket = module.storage.source_bucket_name
   source_archive_object = "external_verification.zip"
   event_trigger {
     event_type = "google.pubsub.topic.publish"
     resource   = google_pubsub_topic.external_verification.name
   }
-  depends_on = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
+  depends_on = [google_project_service.cloudbuild, module.storage]
 }
 
 resource "google_cloudfunctions_function" "internal_qc" {
   name                  = "internal_qc"
   runtime               = "nodejs20"
   entry_point           = "internalQc"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_bucket = module.storage.source_bucket_name
   source_archive_object = "internal_qc.zip"
   event_trigger {
     event_type = "google.pubsub.topic.publish"
     resource   = google_pubsub_topic.internal_qc.name
   }
-  depends_on = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
+  depends_on = [google_project_service.cloudbuild, module.storage]
 }
 
 resource "google_cloudfunctions_function" "decision_engine" {
   name                  = "decision_engine"
   runtime               = "nodejs20"
   entry_point           = "decisionEngine"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_bucket = module.storage.source_bucket_name
   source_archive_object = "decision_engine.zip"
   trigger_http          = true
-  depends_on            = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
+  depends_on            = [google_project_service.cloudbuild, module.storage]
 }
 
 resource "google_cloudfunctions_function" "get_manual_review" {
   name                  = "get_manual_review"
   runtime               = "nodejs20"
   entry_point           = "getManualReview"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_bucket = module.storage.source_bucket_name
   source_archive_object = "get_manual_review.zip"
   trigger_http          = true
-  depends_on            = [google_project_service.cloudbuild, google_project_service.firestore, google_storage_bucket.source_bucket]
+  depends_on            = [google_project_service.cloudbuild, google_project_service.firestore, module.storage]
 }
 
 resource "google_cloudfunctions_function" "submit_correction" {
   name                  = "submit_correction"
   runtime               = "nodejs20"
   entry_point           = "submitCorrection"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_bucket = module.storage.source_bucket_name
   source_archive_object = "submit_correction.zip"
   trigger_http          = true
-  depends_on            = [google_project_service.cloudbuild, google_project_service.firestore, google_storage_bucket.source_bucket]
+  depends_on            = [google_project_service.cloudbuild, google_project_service.firestore, module.storage]
 }
 
 
