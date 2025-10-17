@@ -118,17 +118,16 @@ module "scheduler" {
   http_target_uri = module.function_trigger_ingestion_cycle.https_trigger_url
 }
 
-resource "google_cloudfunctions_function" "fetch_source_data" {
-  name                  = "fetch_source_data"
-  runtime               = "nodejs20"
-  entry_point           = "fetchSourceData"
-  source_archive_bucket = module.storage.source_bucket_name
-  source_archive_object = "fetch_source_data.zip"
-  event_trigger {
-    event_type = "google.pubsub.topic.publish"
-    resource   = module.pubsub.topics["source-to-fetch"].name
-  }
-  depends_on = [google_project_service.cloudbuild, module.storage]
+module "function_fetch_source_data" {
+  source                 = "./modules/google-cloud-function"
+  function_name          = "fetch_source_data"
+  entry_point            = "fetchSourceData"
+  runtime                = "nodejs20"
+  source_archive_bucket  = module.storage.source_bucket_name
+  source_archive_object  = "fetch_source_data.zip"
+  trigger_type           = "event"
+  event_trigger_resource = module.pubsub.topics["source-to-fetch"].name
+  depends_on             = [google_project_service.cloudbuild, module.storage]
 }
 
 resource "google_cloudfunctions_function" "filter_article_content" {
@@ -235,7 +234,7 @@ resource "google_project_iam_member" "trigger_ingestion_cycle_pubsub" {
 resource "google_project_iam_member" "fetch_source_data_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${google_cloudfunctions_function.fetch_source_data.service_account_email}"
+  member  = "serviceAccount:${module.function_fetch_source_data.service_account_email}"
 }
 
 # IAM for filter_article_content to publish to article-to-analyze
