@@ -145,17 +145,16 @@ module "function_filter_article_content" {
   depends_on = [google_project_service.cloudbuild, module.storage]
 }
 
-resource "google_cloudfunctions_function" "core_analysis" {
-  name                  = "core_analysis"
-  runtime               = "nodejs20"
-  entry_point           = "coreAnalysis"
-  source_archive_bucket = module.storage.source_bucket_name
-  source_archive_object = "core_analysis.zip"
-  event_trigger {
-    event_type = "google.pubsub.topic.publish"
-    resource   = module.pubsub.topics["article-to-analyze"].name
-  }
-  depends_on = [google_project_service.cloudbuild, module.storage]
+module "function_core_analysis" {
+  source                 = "./modules/google-cloud-function"
+  function_name          = "core_analysis"
+  entry_point            = "coreAnalysis"
+  runtime                = "nodejs20"
+  source_archive_bucket  = module.storage.source_bucket_name
+  source_archive_object  = "core_analysis.zip"
+  trigger_type           = "event"
+  event_trigger_resource = module.pubsub.topics["article-to-analyze"].name
+  depends_on             = [google_project_service.cloudbuild, module.storage]
 }
 
 resource "google_cloudfunctions_function" "external_verification" {
@@ -247,14 +246,14 @@ resource "google_project_iam_member" "filter_article_content_pubsub" {
 resource "google_project_iam_member" "core_analysis_workflow_invoker" {
   project = var.GCP_PROJECT_ID
   role    = "roles/workflows.invoker"
-  member  = "serviceAccount:${google_cloudfunctions_function.core_analysis.service_account_email}"
+  member  = "serviceAccount:${module.function_core_analysis.service_account_email}"
 }
 
 # IAM for core_analysis to use Vertex AI
 resource "google_project_iam_member" "core_analysis_vertexai" {
   project = var.GCP_PROJECT_ID
   role    = "roles/aiplatform.user"
-  member  = "serviceAccount:${google_cloudfunctions_function.core_analysis.service_account_email}"
+  member  = "serviceAccount:${module.function_core_analysis.service_account_email}"
 }
 
 # IAM for external_verification to publish to decision-engine-queue
