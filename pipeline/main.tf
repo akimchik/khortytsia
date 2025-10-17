@@ -333,7 +333,7 @@ resource "google_cloudfunctions_function" "delivery_alerter" {
   name                  = "delivery_alerter"
   runtime               = "nodejs20"
   entry_point           = "deliverAlert"
-  source_archive_bucket = google_storage_bucket.source_bucket.name
+  source_archive_bucket = module.storage.source_bucket_name
   source_archive_object = "delivery_alerter.zip"
   event_trigger {
     event_type = "google.pubsub.topic.publish"
@@ -342,7 +342,7 @@ resource "google_cloudfunctions_function" "delivery_alerter" {
   environment_variables = {
     WEBHOOK_URL = "YOUR_WEBHOOK_URL_HERE"
   }
-  depends_on = [google_project_service.cloudbuild, google_storage_bucket.source_bucket]
+  depends_on = [google_project_service.cloudbuild, module.storage]
 }
 
 # IAM for decision_engine to publish to final-leads

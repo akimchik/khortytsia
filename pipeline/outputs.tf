@@ -9,13 +9,13 @@ output "decision_engine_url" {
 }
 
 output "source_bucket_name" {
-  description = "The name of the bucket for source code archives."
-  value       = google_storage_bucket.source_bucket.name
+  description = "The name of the source code bucket."
+  value       = module.storage.source_bucket_name
 }
 
 output "keywords_bucket_name" {
-  description = "The name of the bucket where the keywords.json file is stored."
-  value       = google_storage_bucket.keywords_bucket.name
+  description = "The name of the keywords bucket."
+  value       = module.storage.keywords_bucket_name
 }
 
 output "source_to_fetch_topic" {
