@@ -90,20 +90,21 @@ module "bigquery" {
   pubsub_service_account_email = google_project_service_identity.pubsub.email
 }
 
-resource "google_cloudfunctions_function" "trigger_ingestion_cycle" {
-  name                  = "trigger_ingestion_cycle"
-  runtime               = "nodejs20"
+module "function_trigger_ingestion_cycle" {
+  source                = "./modules/google-cloud-function"
+  function_name         = "trigger_ingestion_cycle"
   entry_point           = "triggerIngestionCycle"
+  runtime               = "nodejs20"
   source_archive_bucket = module.storage.source_bucket_name
   source_archive_object = "trigger_ingestion_cycle.zip"
-  trigger_http          = true
+  trigger_type          = "http"
   depends_on            = [google_project_service.cloudbuild, module.storage]
 }
 
 resource "google_cloudfunctions_function_iam_member" "trigger_ingestion_cycle_invoker" {
-  project        = google_cloudfunctions_function.trigger_ingestion_cycle.project
-  region         = google_cloudfunctions_function.trigger_ingestion_cycle.region
-  cloud_function = google_cloudfunctions_function.trigger_ingestion_cycle.name
+  project        = module.function_trigger_ingestion_cycle.project
+  region         = module.function_trigger_ingestion_cycle.region
+  cloud_function = module.function_trigger_ingestion_cycle.name
   role           = "roles/cloudfunctions.invoker"
   member         = "allUsers"
 }
@@ -114,7 +115,7 @@ module "scheduler" {
   description     = "Triggers the ingestion cycle every 30 minutes"
   schedule        = var.schedule
   time_zone       = "Etc/UTC"
-  http_target_uri = google_cloudfunctions_function.trigger_ingestion_cycle.https_trigger_url
+  http_target_uri = module.function_trigger_ingestion_cycle.https_trigger_url
 }
 
 resource "google_cloudfunctions_function" "fetch_source_data" {
@@ -227,7 +228,7 @@ resource "google_workflows_workflow" "khortytsia_workflow" {
 resource "google_project_iam_member" "trigger_ingestion_cycle_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${google_cloudfunctions_function.trigger_ingestion_cycle.service_account_email}"
+  member  = "serviceAccount:${module.function_trigger_ingestion_cycle.service_account_email}"
 }
 
 # IAM for fetch_source_data to publish to article-to-filter
