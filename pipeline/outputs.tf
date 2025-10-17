@@ -1,6 +1,6 @@
 output "trigger_ingestion_cycle_url" {
   description = "The URL of the trigger_ingestion_cycle function."
-  value       = google_cloudfunctions_function.trigger_ingestion_cycle.https_trigger_url
+  value       = module.function_trigger_ingestion_cycle.https_trigger_url
 }
 
 output "decision_engine_url" {
