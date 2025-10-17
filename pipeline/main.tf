@@ -176,7 +176,10 @@ resource "google_cloudfunctions_function_iam_member" "trigger_ingestion_cycle_in
 
 module "scheduler" {
   source          = "./modules/scheduler"
+  job_name        = "trigger-ingestion-cycle-scheduler"
+  description     = "Triggers the ingestion cycle every 30 minutes"
   schedule        = var.schedule
+  time_zone       = "Etc/UTC"
   http_target_uri = google_cloudfunctions_function.trigger_ingestion_cycle.https_trigger_url
 }
 
