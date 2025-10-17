@@ -157,17 +157,16 @@ module "function_core_analysis" {
   depends_on             = [google_project_service.cloudbuild, module.storage]
 }
 
-resource "google_cloudfunctions_function" "external_verification" {
-  name                  = "external_verification"
-  runtime               = "nodejs20"
-  entry_point           = "externalVerification"
-  source_archive_bucket = module.storage.source_bucket_name
-  source_archive_object = "external_verification.zip"
-  event_trigger {
-    event_type = "google.pubsub.topic.publish"
-    resource   = module.pubsub.topics["external-verification"].name
-  }
-  depends_on = [google_project_service.cloudbuild, module.storage]
+module "function_external_verification" {
+  source                 = "./modules/google-cloud-function"
+  function_name          = "external_verification"
+  entry_point            = "externalVerification"
+  runtime                = "nodejs20"
+  source_archive_bucket  = module.storage.source_bucket_name
+  source_archive_object  = "external_verification.zip"
+  trigger_type           = "event"
+  event_trigger_resource = module.pubsub.topics["external-verification"].name
+  depends_on             = [google_project_service.cloudbuild, module.storage]
 }
 
 resource "google_cloudfunctions_function" "internal_qc" {
@@ -260,7 +259,7 @@ resource "google_project_iam_member" "core_analysis_vertexai" {
 resource "google_project_iam_member" "external_verification_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${google_cloudfunctions_function.external_verification.service_account_email}"
+  member  = "serviceAccount:${module.function_external_verification.service_account_email}"
 }
 
 # IAM for internal_qc to publish to decision-engine-queue
