@@ -65,12 +65,4 @@ output "trigger_ingestion_cycle_scheduler_name" {
   value       = module.scheduler.scheduler_job_name
 }
 
-output "get_manual_review_url" {
-  description = "The URL of the get_manual_review function."
-  value       = google_cloudfunctions_function.get_manual_review.https_trigger_url
-}
 
-output "submit_correction_url" {
-  description = "The URL of the submit_correction function."
-  value       = google_cloudfunctions_function.submit_correction.https_trigger_url
-}
