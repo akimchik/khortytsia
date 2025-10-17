@@ -63,36 +63,18 @@ module "storage" {
   keywords_source_path = "../filter_article_content/keywords.json"
 }
 
-resource "google_pubsub_topic" "source_to_fetch" {
-  name = "source-to-fetch"
-}
-
-resource "google_pubsub_topic" "article_to_filter" {
-  name = "article-to-filter"
-}
-
-resource "google_pubsub_topic" "article_to_analyze" {
-  name = "article-to-analyze"
-}
-
-resource "google_pubsub_topic" "external_verification" {
-  name = "external-verification"
-}
-
-resource "google_pubsub_topic" "internal_qc" {
-  name = "internal-qc"
-}
-
-resource "google_pubsub_topic" "decision_engine_queue" {
-  name = "decision-engine-queue"
-}
-
-resource "google_pubsub_topic" "final_analysis" {
-  name = "final-analysis"
-}
-
-resource "google_pubsub_topic" "final_leads" {
-  name = "final-leads"
+module "pubsub" {
+  source      = "./modules/pubsub"
+  topic_names = [
+    "source-to-fetch",
+    "article-to-filter",
+    "article-to-analyze",
+    "external-verification",
+    "internal-qc",
+    "decision-engine-queue",
+    "final-analysis",
+    "final-leads",
+  ]
 }
 
 
@@ -128,7 +110,7 @@ resource "google_project_iam_member" "pubsub_to_bigquery" {
 # Pub/Sub subscription that writes directly to the BigQuery table
 resource "google_pubsub_subscription" "final_analysis_to_bigquery" {
   name  = "final-analysis-to-bigquery-sub"
-  topic = google_pubsub_topic.final_analysis.name
+  topic = module.pubsub.topics["final-analysis"].name
 
   bigquery_config {
     table               = "${google_bigquery_table.approved_leads.project}:${google_bigquery_table.approved_leads.dataset_id}.${google_bigquery_table.approved_leads.table_id}"
@@ -175,7 +157,7 @@ resource "google_cloudfunctions_function" "fetch_source_data" {
   source_archive_object = "fetch_source_data.zip"
   event_trigger {
     event_type = "google.pubsub.topic.publish"
-    resource   = google_pubsub_topic.source_to_fetch.name
+    resource   = module.pubsub.topics["source-to-fetch"].name
   }
   depends_on = [google_project_service.cloudbuild, module.storage]
 }
@@ -188,7 +170,7 @@ resource "google_cloudfunctions_function" "filter_article_content" {
   source_archive_object = "filter_article_content.zip"
   event_trigger {
     event_type = "google.pubsub.topic.publish"
-    resource   = google_pubsub_topic.article_to_filter.name
+    resource   = module.pubsub.topics["article-to-filter"].name
   }
   environment_variables = {
     KEYWORDS_BUCKET = module.storage.keywords_bucket_name
@@ -204,7 +186,7 @@ resource "google_cloudfunctions_function" "core_analysis" {
   source_archive_object = "core_analysis.zip"
   event_trigger {
     event_type = "google.pubsub.topic.publish"
-    resource   = google_pubsub_topic.article_to_analyze.name
+    resource   = module.pubsub.topics["article-to-analyze"].name
   }
   depends_on = [google_project_service.cloudbuild, module.storage]
 }
@@ -217,7 +199,7 @@ resource "google_cloudfunctions_function" "external_verification" {
   source_archive_object = "external_verification.zip"
   event_trigger {
     event_type = "google.pubsub.topic.publish"
-    resource   = google_pubsub_topic.external_verification.name
+    resource   = module.pubsub.topics["external-verification"].name
   }
   depends_on = [google_project_service.cloudbuild, module.storage]
 }
@@ -230,7 +212,7 @@ resource "google_cloudfunctions_function" "internal_qc" {
   source_archive_object = "internal_qc.zip"
   event_trigger {
     event_type = "google.pubsub.topic.publish"
-    resource   = google_pubsub_topic.internal_qc.name
+    resource   = module.pubsub.topics["internal-qc"].name
   }
   depends_on = [google_project_service.cloudbuild, module.storage]
 }
@@ -337,7 +319,7 @@ resource "google_cloudfunctions_function" "delivery_alerter" {
   source_archive_object = "delivery_alerter.zip"
   event_trigger {
     event_type = "google.pubsub.topic.publish"
-    resource   = google_pubsub_topic.final_leads.name
+    resource   = module.pubsub.topics["final-leads"].name
   }
   environment_variables = {
     WEBHOOK_URL = "YOUR_WEBHOOK_URL_HERE"
