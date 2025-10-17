@@ -55,12 +55,6 @@ resource "google_project_service_identity" "pubsub" {
   service  = "pubsub.googleapis.com"
 }
 
-resource "random_string" "bucket_prefix" {
-  length  = 8
-  special = false
-  upper   = false
-}
-
 resource "google_storage_bucket" "source_bucket" {
   name          = "${var.GCP_PROJECT_ID}-source-code"
   location      = var.region
@@ -68,7 +62,7 @@ resource "google_storage_bucket" "source_bucket" {
 }
 
 resource "google_storage_bucket" "keywords_bucket" {
-  name          = "${var.GCP_PROJECT_ID}-keywords-${random_string.bucket_prefix.result}"
+  name          = "${var.GCP_PROJECT_ID}-keywords"
   location      = var.region
   force_destroy = true
 }
@@ -180,16 +174,10 @@ resource "google_cloudfunctions_function_iam_member" "trigger_ingestion_cycle_in
   member         = "allUsers"
 }
 
-resource "google_cloud_scheduler_job" "trigger_ingestion_cycle_scheduler" {
-  name        = "trigger-ingestion-cycle-scheduler"
-  description = "Triggers the ingestion cycle every 30 minutes"
-  schedule    = var.schedule
-  time_zone   = "Etc/UTC"
-
-  http_target {
-    http_method = "GET"
-    uri         = google_cloudfunctions_function.trigger_ingestion_cycle.https_trigger_url
-  }
+module "scheduler" {
+  source          = "./modules/scheduler"
+  schedule        = var.schedule
+  http_target_uri = google_cloudfunctions_function.trigger_ingestion_cycle.https_trigger_url
 }
 
 resource "google_cloudfunctions_function" "fetch_source_data" {
