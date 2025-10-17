@@ -181,158 +181,306 @@ module "function_internal_qc" {
   depends_on             = [google_project_service.cloudbuild, module.storage]
 }
 
-resource "google_cloudfunctions_function" "decision_engine" {
-  name                  = "decision_engine"
-  runtime               = "nodejs20"
+module "function_decision_engine" {
+
+  source                = "./modules/google-cloud-function"
+
+  function_name         = "decision_engine"
+
   entry_point           = "decisionEngine"
+
+  runtime               = "nodejs20"
+
   source_archive_bucket = module.storage.source_bucket_name
+
   source_archive_object = "decision_engine.zip"
-  trigger_http          = true
+
+  trigger_type          = "http"
+
   depends_on            = [google_project_service.cloudbuild, module.storage]
+
 }
 
-resource "google_cloudfunctions_function" "get_manual_review" {
-  name                  = "get_manual_review"
-  runtime               = "nodejs20"
+
+
+module "function_get_manual_review" {
+
+  source                = "./modules/google-cloud-function"
+
+  function_name         = "get_manual_review"
+
   entry_point           = "getManualReview"
+
+  runtime               = "nodejs20"
+
   source_archive_bucket = module.storage.source_bucket_name
+
   source_archive_object = "get_manual_review.zip"
-  trigger_http          = true
+
+  trigger_type          = "http"
+
   depends_on            = [google_project_service.cloudbuild, google_project_service.firestore, module.storage]
+
 }
 
-resource "google_cloudfunctions_function" "submit_correction" {
-  name                  = "submit_correction"
-  runtime               = "nodejs20"
+
+
+module "function_submit_correction" {
+
+  source                = "./modules/google-cloud-function"
+
+  function_name         = "submit_correction"
+
   entry_point           = "submitCorrection"
+
+  runtime               = "nodejs20"
+
   source_archive_bucket = module.storage.source_bucket_name
+
   source_archive_object = "submit_correction.zip"
-  trigger_http          = true
+
+  trigger_type          = "http"
+
   depends_on            = [google_project_service.cloudbuild, google_project_service.firestore, module.storage]
+
 }
 
 
 
 resource "google_workflows_workflow" "khortytsia_workflow" {
+
   name            = "khortytsia-workflow"
+
   region          = var.region
+
   source_contents = file("../workflow.yaml")
+
 }
+
+
 
 # IAM for trigger_ingestion_cycle to publish to source-to-fetch
+
 resource "google_project_iam_member" "trigger_ingestion_cycle_pubsub" {
+
   project = var.GCP_PROJECT_ID
+
   role    = "roles/pubsub.publisher"
+
   member  = "serviceAccount:${module.function_trigger_ingestion_cycle.service_account_email}"
+
 }
+
+
 
 # IAM for fetch_source_data to publish to article-to-filter
+
 resource "google_project_iam_member" "fetch_source_data_pubsub" {
+
   project = var.GCP_PROJECT_ID
+
   role    = "roles/pubsub.publisher"
+
   member  = "serviceAccount:${module.function_fetch_source_data.service_account_email}"
+
 }
+
+
 
 # IAM for filter_article_content to publish to article-to-analyze
+
 resource "google_project_iam_member" "filter_article_content_pubsub" {
+
   project = var.GCP_PROJECT_ID
+
   role    = "roles/pubsub.publisher"
+
   member  = "serviceAccount:${module.function_filter_article_content.service_account_email}"
+
 }
+
+
 
 # IAM for core_analysis to invoke the workflow
+
 resource "google_project_iam_member" "core_analysis_workflow_invoker" {
+
   project = var.GCP_PROJECT_ID
+
   role    = "roles/workflows.invoker"
+
   member  = "serviceAccount:${module.function_core_analysis.service_account_email}"
+
 }
+
+
 
 # IAM for core_analysis to use Vertex AI
+
 resource "google_project_iam_member" "core_analysis_vertexai" {
+
   project = var.GCP_PROJECT_ID
+
   role    = "roles/aiplatform.user"
+
   member  = "serviceAccount:${module.function_core_analysis.service_account_email}"
+
 }
+
+
 
 # IAM for external_verification to publish to decision-engine-queue
+
 resource "google_project_iam_member" "external_verification_pubsub" {
+
   project = var.GCP_PROJECT_ID
+
   role    = "roles/pubsub.publisher"
+
   member  = "serviceAccount:${module.function_external_verification.service_account_email}"
+
 }
+
+
 
 # IAM for internal_qc to publish to decision-engine-queue
+
 resource "google_project_iam_member" "internal_qc_pubsub" {
+
   project = var.GCP_PROJECT_ID
+
   role    = "roles/pubsub.publisher"
+
   member  = "serviceAccount:${module.function_internal_qc.service_account_email}"
+
 }
+
+
 
 # IAM for decision_engine to publish to final_analysis and review_notifications
+
 resource "google_project_iam_member" "decision_engine_pubsub" {
+
   project = var.GCP_PROJECT_ID
+
   role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"
+
+  member  = "serviceAccount:${module.function_decision_engine.service_account_email}"
+
 }
 
-resource "google_cloudfunctions_function" "delivery_alerter" {
-  name                  = "delivery_alerter"
-  runtime               = "nodejs20"
-  entry_point           = "deliverAlert"
-  source_archive_bucket = module.storage.source_bucket_name
-  source_archive_object = "delivery_alerter.zip"
-  event_trigger {
-    event_type = "google.pubsub.topic.publish"
-    resource   = module.pubsub.topics["final-leads"].name
-  }
+
+
+module "function_delivery_alerter" {
+
+  source                 = "./modules/google-cloud-function"
+
+  function_name          = "delivery_alerter"
+
+  entry_point            = "deliverAlert"
+
+  runtime                = "nodejs20"
+
+  source_archive_bucket  = module.storage.source_bucket_name
+
+  source_archive_object  = "delivery_alerter.zip"
+
+  trigger_type           = "event"
+
+  event_trigger_resource = module.pubsub.topics["final-leads"].name
+
   environment_variables = {
+
     WEBHOOK_URL = "YOUR_WEBHOOK_URL_HERE"
+
   }
+
   depends_on = [google_project_service.cloudbuild, module.storage]
+
 }
+
+
 
 # IAM for decision_engine to publish to final-leads
+
 resource "google_project_iam_member" "decision_engine_final_leads_pubsub" {
+
   project = var.GCP_PROJECT_ID
+
   role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"
+
+  member  = "serviceAccount:${module.function_decision_engine.service_account_email}"
+
 }
+
+
 
 # IAM for functions to access Firestore
+
 resource "google_project_iam_member" "decision_engine_firestore" {
+
   project = var.GCP_PROJECT_ID
+
   role    = "roles/datastore.user"
-  member  = "serviceAccount:${google_cloudfunctions_function.decision_engine.service_account_email}"
+
+  member  = "serviceAccount:${module.function_decision_engine.service_account_email}"
+
 }
+
+
 
 resource "google_project_iam_member" "get_manual_review_firestore" {
+
   project = var.GCP_PROJECT_ID
+
   role    = "roles/datastore.user"
-  member  = "serviceAccount:${google_cloudfunctions_function.get_manual_review.service_account_email}"
+
+  member  = "serviceAccount:${module.function_get_manual_review.service_account_email}"
+
 }
 
+
+
 resource "google_project_iam_member" "submit_correction_firestore" {
+
   project = var.GCP_PROJECT_ID
+
   role    = "roles/datastore.user"
-  member  = "serviceAccount:${google_cloudfunctions_function.submit_correction.service_account_email}"
+
+  member  = "serviceAccount:${module.function_submit_correction.service_account_email}"
+
 }
 
 
 
 resource "google_cloudfunctions_function_iam_member" "get_manual_review_invoker_all_users" {
-  project        = google_cloudfunctions_function.get_manual_review.project
-  region         = google_cloudfunctions_function.get_manual_review.region
-  cloud_function = google_cloudfunctions_function.get_manual_review.name
+
+  project        = module.function_get_manual_review.project
+
+  region         = module.function_get_manual_review.region
+
+  cloud_function = module.function_get_manual_review.name
+
   role           = "roles/cloudfunctions.invoker"
+
   member         = "allUsers"
+
 }
 
+
+
 resource "google_cloudfunctions_function_iam_member" "submit_correction_invoker_all_users" {
-  project        = google_cloudfunctions_function.submit_correction.project
-  region         = google_cloudfunctions_function.submit_correction.region
-  cloud_function = google_cloudfunctions_function.submit_correction.name
+
+  project        = module.function_submit_correction.project
+
+  region         = module.function_submit_correction.region
+
+  cloud_function = module.function_submit_correction.name
+
   role           = "roles/cloudfunctions.invoker"
+
   member         = "allUsers"
+
 }
 
 module "monitoring" {

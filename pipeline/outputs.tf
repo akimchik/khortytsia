@@ -5,7 +5,17 @@ output "trigger_ingestion_cycle_url" {
 
 output "decision_engine_url" {
   description = "The URL of the decision_engine function."
-  value       = google_cloudfunctions_function.decision_engine.https_trigger_url
+  value       = module.function_decision_engine.https_trigger_url
+}
+
+output "get_manual_review_url" {
+  description = "The URL of the get_manual_review function."
+  value       = module.function_get_manual_review.https_trigger_url
+}
+
+output "submit_correction_url" {
+  description = "The URL of the submit_correction function."
+  value       = module.function_submit_correction.https_trigger_url
 }
 
 output "source_bucket_name" {
