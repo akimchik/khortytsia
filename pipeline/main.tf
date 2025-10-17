@@ -80,46 +80,14 @@ module "pubsub" {
 
 
 # BigQuery Dataset and Table to store final results
-resource "google_bigquery_dataset" "results_dataset" {
-  dataset_id                 = "khortytsia_results"
-  description                = "Dataset to store results from the Khortytsia pipeline"
-  location                   = var.region
-  delete_contents_on_destroy = true
-  depends_on                 = [google_project_service.bigquery]
-}
-
-resource "google_bigquery_table" "approved_leads" {
-  dataset_id          = google_bigquery_dataset.results_dataset.dataset_id
-  table_id            = "approved_leads"
-  deletion_protection = false
-
-  schema = <<EOF
-[
-  {"name": "data", "type": "STRING"}
-]
-EOF
-}
-
-# Grant the Pub/Sub service account permission to write to the BigQuery table
-resource "google_project_iam_member" "pubsub_to_bigquery" {
-  project = var.GCP_PROJECT_ID
-  role    = "roles/bigquery.dataEditor"
-  member  = "serviceAccount:${google_project_service_identity.pubsub.email}"
-}
-
-# Pub/Sub subscription that writes directly to the BigQuery table
-resource "google_pubsub_subscription" "final_analysis_to_bigquery" {
-  name  = "final-analysis-to-bigquery-sub"
-  topic = module.pubsub.topics["final-analysis"].name
-
-  bigquery_config {
-    table               = "${google_bigquery_table.approved_leads.project}:${google_bigquery_table.approved_leads.dataset_id}.${google_bigquery_table.approved_leads.table_id}"
-    use_topic_schema    = false
-    write_metadata      = false
-    drop_unknown_fields = true
-  }
-
-  depends_on = [google_project_iam_member.pubsub_to_bigquery]
+module "bigquery" {
+  source                       = "./modules/bigquery"
+  project_id                   = var.GCP_PROJECT_ID
+  dataset_id                   = "khortytsia_results"
+  location                     = var.region
+  table_id                     = "approved_leads"
+  final_analysis_topic_name    = module.pubsub.topics["final-analysis"].name
+  pubsub_service_account_email = google_project_service_identity.pubsub.email
 }
 
 resource "google_cloudfunctions_function" "trigger_ingestion_cycle" {
