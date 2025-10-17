@@ -60,7 +60,7 @@ output "final_leads_topic" {
 
 output "trigger_ingestion_cycle_scheduler_name" {
   description = "The name of the Cloud Scheduler job."
-  value       = module.scheduler.job_name
+  value       = module.scheduler.scheduler_job_name
 }
 
 output "get_manual_review_url" {
