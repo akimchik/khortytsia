@@ -130,16 +130,15 @@ module "function_fetch_source_data" {
   depends_on             = [google_project_service.cloudbuild, module.storage]
 }
 
-resource "google_cloudfunctions_function" "filter_article_content" {
-  name                  = "filter_article_content"
-  runtime               = "nodejs20"
-  entry_point           = "filterArticleContent"
-  source_archive_bucket = module.storage.source_bucket_name
-  source_archive_object = "filter_article_content.zip"
-  event_trigger {
-    event_type = "google.pubsub.topic.publish"
-    resource   = module.pubsub.topics["article-to-filter"].name
-  }
+module "function_filter_article_content" {
+  source                 = "./modules/google-cloud-function"
+  function_name          = "filter_article_content"
+  entry_point            = "filterArticleContent"
+  runtime                = "nodejs20"
+  source_archive_bucket  = module.storage.source_bucket_name
+  source_archive_object  = "filter_article_content.zip"
+  trigger_type           = "event"
+  event_trigger_resource = module.pubsub.topics["article-to-filter"].name
   environment_variables = {
     KEYWORDS_BUCKET = module.storage.keywords_bucket_name
   }
@@ -241,7 +240,7 @@ resource "google_project_iam_member" "fetch_source_data_pubsub" {
 resource "google_project_iam_member" "filter_article_content_pubsub" {
   project = var.GCP_PROJECT_ID
   role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${google_cloudfunctions_function.filter_article_content.service_account_email}"
+  member  = "serviceAccount:${module.function_filter_article_content.service_account_email}"
 }
 
 # IAM for core_analysis to invoke the workflow
