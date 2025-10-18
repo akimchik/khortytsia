@@ -490,3 +490,53 @@ module "monitoring" {
   metric_filter             = "resource.type=\"cloud_function\" AND jsonPayload.review_required=true"
   alert_policy_display_name = "Alert for Manual Review Items"
 }
+
+moved {
+  from = module.functions["trigger_ingestion_cycle"].google_cloudfunctions_function.function
+  to   = module.function_trigger_ingestion_cycle.google_cloudfunctions_function.function
+}
+
+moved {
+  from = module.functions["fetch_source_data"].google_cloudfunctions_function.function
+  to   = module.function_fetch_source_data.google_cloudfunctions_function.function
+}
+
+moved {
+  from = module.functions["filter_article_content"].google_cloudfunctions_function.function
+  to   = module.function_filter_article_content.google_cloudfunctions_function.function
+}
+
+moved {
+  from = module.functions["core_analysis"].google_cloudfunctions_function.function
+  to   = module.function_core_analysis.google_cloudfunctions_function.function
+}
+
+moved {
+  from = module.functions["external_verification"].google_cloudfunctions_function.function
+  to   = module.function_external_verification.google_cloudfunctions_function.function
+}
+
+moved {
+  from = module.functions["internal_qc"].google_cloudfunctions_function.function
+  to   = module.function_internal_qc.google_cloudfunctions_function.function
+}
+
+moved {
+  from = module.functions["decision_engine"].google_cloudfunctions_function.function
+  to   = module.function_decision_engine.google_cloudfunctions_function.function
+}
+
+moved {
+  from = module.functions["get_manual_review"].google_cloudfunctions_function.function
+  to   = module.function_get_manual_review.google_cloudfunctions_function.function
+}
+
+moved {
+  from = module.functions["submit_correction"].google_cloudfunctions_function.function
+  to   = module.function_submit_correction.google_cloudfunctions_function.function
+}
+
+moved {
+  from = module.functions["delivery_alerter"].google_cloudfunctions_function.function
+  to   = module.function_delivery_alerter.google_cloudfunctions_function.function
+}
