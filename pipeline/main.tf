@@ -2,11 +2,11 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 4.0"
+      version = ">~ 4.0"
     }
     google-beta = {
       source  = "hashicorp/google-beta"
-      version = "~> 4.0"
+      version = ">~ 4.0"
     }
   }
 
@@ -492,51 +492,51 @@ module "monitoring" {
 }
 
 moved {
-  from = module.functions["trigger_ingestion_cycle"].google_cloudfunctions_function.function
+  from = google_cloudfunctions_function.trigger_ingestion_cycle
   to   = module.function_trigger_ingestion_cycle.google_cloudfunctions_function.function
 }
 
 moved {
-  from = module.functions["fetch_source_data"].google_cloudfunctions_function.function
+  from = google_cloudfunctions_function.fetch_source_data
   to   = module.function_fetch_source_data.google_cloudfunctions_function.function
 }
 
 moved {
-  from = module.functions["filter_article_content"].google_cloudfunctions_function.function
+  from = google_cloudfunctions_function.filter_article_content
   to   = module.function_filter_article_content.google_cloudfunctions_function.function
 }
 
 moved {
-  from = module.functions["core_analysis"].google_cloudfunctions_function.function
+  from = google_cloudfunctions_function.core_analysis
   to   = module.function_core_analysis.google_cloudfunctions_function.function
 }
 
 moved {
-  from = module.functions["external_verification"].google_cloudfunctions_function.function
+  from = google_cloudfunctions_function.external_verification
   to   = module.function_external_verification.google_cloudfunctions_function.function
 }
 
 moved {
-  from = module.functions["internal_qc"].google_cloudfunctions_function.function
+  from = google_cloudfunctions_function.internal_qc
   to   = module.function_internal_qc.google_cloudfunctions_function.function
 }
 
 moved {
-  from = module.functions["decision_engine"].google_cloudfunctions_function.function
+  from = google_cloudfunctions_function.decision_engine
   to   = module.function_decision_engine.google_cloudfunctions_function.function
 }
 
 moved {
-  from = module.functions["get_manual_review"].google_cloudfunctions_function.function
+  from = google_cloudfunctions_function.get_manual_review
   to   = module.function_get_manual_review.google_cloudfunctions_function.function
 }
 
 moved {
-  from = module.functions["submit_correction"].google_cloudfunctions_function.function
+  from = google_cloudfunctions_function.submit_correction
   to   = module.function_submit_correction.google_cloudfunctions_function.function
 }
 
 moved {
-  from = module.functions["delivery_alerter"].google_cloudfunctions_function.function
+  from = google_cloudfunctions_function.delivery_alerter
   to   = module.function_delivery_alerter.google_cloudfunctions_function.function
 }
